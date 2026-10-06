@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "naviora.pvt@gmail.com" ||
+        request.auth.token.email == "alex.mercer@navioraa.internal" ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Public readable site settings, admin editable
+    match /siteSettings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Public readable IT services, admin editable
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Public readable courses catalog, admin editable
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Public readable showcase projects, admin editable
+    match /projects/{projectId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Public readable learning resources & engineering notes, admin editable
+    match /resources/{resourceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Public readable team faculty & leads, admin editable
+    match /teamMembers/{memberId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Contact Inquiries: Anyone can submit an inquiry/RFP; strictly private to admins
+    match /contactInquiries/{inquiryId} {
+      allow create: if request.resource.data.name is string &&
+                       request.resource.data.name.size() > 0 &&
+                       request.resource.data.name.size() <= 120 &&
+                       request.resource.data.email is string &&
+                       request.resource.data.email.size() > 0 &&
+                       request.resource.data.email.size() <= 150 &&
+                       request.resource.data.message is string &&
+                       request.resource.data.message.size() > 0 &&
+                       request.resource.data.message.size() <= 4000;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Admin audit logs: admins can read and append; cannot modify/delete history
+    match /adminAuditLogs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

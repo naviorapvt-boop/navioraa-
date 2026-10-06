@@ -1,0 +1,205 @@
+{
+  "entities": {
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global website configuration, brand metadata, and contact parameters.",
+      "type": "object",
+      "properties": {
+        "siteName": { "type": "string", "maxLength": 100 },
+        "tagline": { "type": "string", "maxLength": 200 },
+        "contactEmail": { "type": "string", "maxLength": 120 },
+        "contactPhone": { "type": "string", "maxLength": 50 },
+        "whatsappNumber": { "type": "string", "maxLength": 50 },
+        "address": { "type": "string", "maxLength": 255 },
+        "githubUrl": { "type": "string", "maxLength": 255 },
+        "linkedinUrl": { "type": "string", "maxLength": 255 },
+        "twitterUrl": { "type": "string", "maxLength": 255 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["siteName", "tagline", "contactEmail"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "IT enterprise services offered by Navioraa.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 150 },
+        "slug": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "maxLength": 50 },
+        "shortDescription": { "type": "string", "maxLength": 300 },
+        "content": { "type": "string", "maxLength": 4000 },
+        "features": { "type": "array" },
+        "benefits": { "type": "array" },
+        "technologies": { "type": "array" },
+        "milestones": { "type": "array" },
+        "imageUrl": { "type": "string", "maxLength": 1000 },
+        "featured": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "sortOrder": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "shortDescription", "status"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Academy IT training courses and cohorts.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 150 },
+        "code": { "type": "string", "maxLength": 50 },
+        "slug": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "maxLength": 50 },
+        "difficulty": { "type": "string", "maxLength": 50 },
+        "duration": { "type": "string", "maxLength": 100 },
+        "hours": { "type": "string", "maxLength": 50 },
+        "seats": { "type": "string", "maxLength": 50 },
+        "rating": { "type": "string", "maxLength": 20 },
+        "price": { "type": "string", "maxLength": 50 },
+        "shortDescription": { "type": "string", "maxLength": 350 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "technologies": { "type": "array" },
+        "curriculum": { "type": "array" },
+        "learningOutcomes": { "type": "array" },
+        "prerequisites": { "type": "array" },
+        "registrationUrl": { "type": "string", "maxLength": 500 },
+        "imageUrl": { "type": "string", "maxLength": 1000 },
+        "featured": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "sortOrder": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "shortDescription", "status"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Showcase portfolio projects engineered by Navioraa.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 150 },
+        "slug": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "technologies": { "type": "array" },
+        "imageUrl": { "type": "string", "maxLength": 1000 },
+        "demoUrl": { "type": "string", "maxLength": 500 },
+        "sourceUrl": { "type": "string", "maxLength": 500 },
+        "featured": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "sortOrder": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "description", "status"]
+    },
+    "Resource": {
+      "title": "Resource",
+      "description": "Learning materials, engineering notes, and documents.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "category": { "type": "string", "maxLength": 50 },
+        "fileType": { "type": "string", "maxLength": 50 },
+        "fileUrl": { "type": "string", "maxLength": 1000 },
+        "fileSize": { "type": "string", "maxLength": 50 },
+        "downloadCount": { "type": "number" },
+        "featured": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "description", "status"]
+    },
+    "TeamMember": {
+      "title": "TeamMember",
+      "description": "Navioraa leadership and engineering faculty profiles.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "maxLength": 100 },
+        "bio": { "type": "string", "maxLength": 2000 },
+        "skills": { "type": "array" },
+        "photoUrl": { "type": "string", "maxLength": 1000 },
+        "linkedinUrl": { "type": "string", "maxLength": 500 },
+        "githubUrl": { "type": "string", "maxLength": 500 },
+        "twitterUrl": { "type": "string", "maxLength": 500 },
+        "sortOrder": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "role", "status"]
+    },
+    "ContactInquiry": {
+      "title": "ContactInquiry",
+      "description": "Incoming RFP, consultation, and academy inquiries.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 120 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "inquiryType": { "type": "string", "maxLength": 100 },
+        "budget": { "type": "string", "maxLength": 100 },
+        "timeline": { "type": "string", "maxLength": 100 },
+        "subject": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 4000 },
+        "services": { "type": "array" },
+        "status": { "type": "string", "enum": ["New", "In Progress", "Resolved"] },
+        "adminNotes": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "email", "message", "status"]
+    },
+    "AdminAuditLog": {
+      "title": "AdminAuditLog",
+      "description": "Security audit records of CMS modifications.",
+      "type": "object",
+      "properties": {
+        "adminEmail": { "type": "string", "maxLength": 150 },
+        "action": { "type": "string", "maxLength": 100 },
+        "contentType": { "type": "string", "maxLength": 100 },
+        "recordId": { "type": "string", "maxLength": 150 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["adminEmail", "action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/siteSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/SiteSettings" },
+      "description": "Global website configuration."
+    },
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/Service" },
+      "description": "Services published by Navioraa."
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/Course" },
+      "description": "IT training courses and curricula."
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Engineering projects portfolio."
+    },
+    "/resources/{resourceId}": {
+      "schema": { "$ref": "#/entities/Resource" },
+      "description": "Learning documents and downloadables."
+    },
+    "/teamMembers/{memberId}": {
+      "schema": { "$ref": "#/entities/TeamMember" },
+      "description": "Team profiles and faculty."
+    },
+    "/contactInquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/ContactInquiry" },
+      "description": "Submitted inquiries from visitors."
+    },
+    "/adminAuditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AdminAuditLog" },
+      "description": "Immutable security audit logs for CMS changes."
+    }
+  }
+}
