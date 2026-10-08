@@ -45,7 +45,7 @@ export const ResourcesPage: React.FC<ResourcesPageProps> = ({ navigate }) => {
   };
 
   return (
-    <div className="w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
+    <div className="public-resources w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
       {/* Header */}
       <div className="relative w-full overflow-hidden bg-[#090e1c] py-16 border-b border-[#434655]/20">
         <div className="absolute top-0 right-1/4 w-80 h-80 bg-[#65e8ff]/10 rounded-full blur-[120px] pointer-events-none" />
@@ -58,14 +58,11 @@ export const ResourcesPage: React.FC<ResourcesPageProps> = ({ navigate }) => {
           </div>
 
           <h1 className="font-['Geist'] text-[40px] sm:text-[50px] font-bold text-[#dee2f6] tracking-tight">
-            Learning Resources &{' '}
-            <span className="bg-gradient-to-r from-[#658aff] via-[#2ad9f2] to-[#65e8ff] bg-clip-text text-transparent">
-              Engineering Notes
-            </span>
+            Learning resources<br /><em>for the curious.</em>
           </h1>
 
           <p className="text-[17px] text-[#a6b1c5] max-w-2xl leading-relaxed">
-            Curated whitepapers, architectural schematics, code patterns, and deep-dive technical notes published by Navioraa's systems faculty for engineers and students.
+            Notes, guides and materials for your next step, whether you are starting out or going deeper.
           </p>
         </div>
       </div>
@@ -106,47 +103,23 @@ export const ResourcesPage: React.FC<ResourcesPageProps> = ({ navigate }) => {
 
       {/* Resource Grid */}
       <div className="max-w-7xl mx-auto px-6 lg:px-12 pb-24">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredResources.map(res => (
-            <div
-              key={res.id}
-              className="rounded-xl bg-[#10182b] border border-[#434655]/20 hover:border-[#65e8ff]/40 p-6 flex flex-col justify-between group transition-all shadow-md"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <span className="px-2.5 py-1 rounded bg-[#252a39] text-[#65e8ff] font-mono text-[11px] uppercase font-bold border border-[#252a39]">
-                    {res.category}
-                  </span>
-                  <span className="text-[12px] font-mono text-[#a6b1c5] flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[15px]">download</span>
-                    {res.downloadCount || 0} downloads
-                  </span>
-                </div>
-
-                <h3 className="font-['Geist'] text-[20px] text-[#dee2f6] font-bold mb-2 group-hover:text-[#65e8ff] transition-colors">
-                  {res.title}
-                </h3>
-                <p className="text-[14px] text-[#a6b1c5] mb-6 leading-relaxed">
-                  {res.description}
-                </p>
+        <div className="resource-entries">
+          {filteredResources.map((res, index) => (
+            <article key={res.id} className="resource-entry">
+              <span className="resource-entry-number">{String(index + 1).padStart(2, '0')}</span>
+              <div className="resource-entry-copy">
+                <p className="resource-entry-category">{res.category}</p>
+                <h2>{res.title}</h2>
+                <p className="resource-entry-description">{res.description}</p>
               </div>
-
-              <div className="pt-4 border-t border-[#252a39] flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-mono text-[#8d90a0]">
-                  <span className="material-symbols-outlined text-[16px] text-[#b5c4ff]">description</span>
-                  <span>{res.fileType}</span>
-                  {res.fileSize && <span>({res.fileSize})</span>}
-                </div>
-
-                <button
-                  onClick={() => handleDownload(res)}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#658aff] to-[#2ad9f2] text-[#090e1c] font-bold text-[13px] shadow-sm hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[16px]">file_download</span>
-                  <span>Get Resource</span>
+              <div className="resource-entry-action">
+                <span>{res.fileType}{res.fileSize ? ` · ${res.fileSize}` : ''}</span>
+                <span className="resource-download-count">{res.downloadCount || 0} downloads</span>
+                <button onClick={() => handleDownload(res)} aria-label={`Get ${res.title}`}>
+                  Get resource <span aria-hidden="true">↗</span>
                 </button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </div>

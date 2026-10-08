@@ -6,32 +6,27 @@ interface AboutPageProps {
 
 export const AboutPage: React.FC<AboutPageProps> = ({ navigate }) => {
   return (
-    <div className="w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
+    <div className="public-about w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
       {/* Hero */}
       <div className="relative w-full overflow-hidden bg-[#090e1c] py-20 border-b border-[#434655]/20">
         <div className="absolute top-10 left-1/3 w-96 h-96 bg-[#658aff]/15 rounded-full blur-[140px] pointer-events-none" />
         <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10 flex flex-col gap-4">
-          <div className="inline-flex items-center gap-2 self-start px-3.5 py-1.5 rounded-full bg-[#252a39] border border-[#65e8ff]/30">
-            <span className="w-2 h-2 rounded-full bg-[#65e8ff] animate-pulse" />
-            <span className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-wider font-semibold">
-              Organization Blueprint
-            </span>
-          </div>
+          <p className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-wider font-semibold">01 / ABOUT NAVIORAA</p>
 
           <h1 className="font-['Geist'] text-[40px] sm:text-[54px] font-bold text-[#dee2f6] tracking-tight leading-tight">
-            About <span className="bg-gradient-to-r from-[#658aff] via-[#2ad9f2] to-[#65e8ff] bg-clip-text text-transparent">Navioraa</span>
+            Built to learn.<br />Made to build.
           </h1>
 
           <p className="text-[18px] text-[#a6b1c5] max-w-3xl leading-relaxed">
-            Navioraa is a premier technology company and engineering academy delivering modern software solutions, cloud architectures, and intensive practical training for students, aspiring engineers, and growing enterprises.
+            Navioraa brings practical technology training and digital project work together, helping people turn curiosity into capability and ideas into useful products.
           </p>
         </div>
       </div>
 
       {/* Mission & Vision Grid */}
       <div className="max-w-7xl mx-auto px-6 lg:px-12 py-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-          <div className="p-8 rounded-xl bg-[#10182b] border border-[#434655]/20 shadow-lg flex flex-col gap-4">
+        <div className="about-mission-list">
+          <div className="about-mission-item">
             <div className="w-12 h-12 rounded-lg bg-[#252a39] flex items-center justify-center text-[#65e8ff]">
               <span className="material-symbols-outlined text-[28px]">rocket_launch</span>
             </div>
@@ -41,7 +36,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ navigate }) => {
             </p>
           </div>
 
-          <div className="p-8 rounded-xl bg-[#10182b] border border-[#434655]/20 shadow-lg flex flex-col gap-4">
+          <div className="about-mission-item">
             <div className="w-12 h-12 rounded-lg bg-[#252a39] flex items-center justify-center text-[#b5c4ff]">
               <span className="material-symbols-outlined text-[28px]">visibility</span>
             </div>
@@ -53,11 +48,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ navigate }) => {
         </div>
 
         {/* Practical Learning Philosophy */}
-        <div className="p-8 lg:p-12 rounded-2xl bg-[#10182b] border border-[#434655]/30 shadow-2xl mb-16">
+        <div className="about-philosophy">
           <div className="max-w-3xl">
-            <span className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-widest font-bold">
-              Pedagogical Foundation
-            </span>
+            <span className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-widest font-bold">HOW WE LEARN</span>
             <h2 className="font-['Geist'] text-[32px] sm:text-[38px] font-bold text-[#dee2f6] mt-2 mb-4">
               The Practical Learning Philosophy
             </h2>
@@ -82,7 +75,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ navigate }) => {
         </div>
 
         {/* Technology Focus & Core Pillars */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="about-pillars">
           <div className="p-6 rounded-xl bg-[#10182b] border border-[#434655]/20 flex flex-col gap-3">
             <span className="font-mono text-[11px] text-[#65e8ff] uppercase font-bold">Domain 01</span>
             <h4 className="font-['Geist'] text-[20px] text-[#dee2f6] font-bold">Advanced Programming & AI</h4>

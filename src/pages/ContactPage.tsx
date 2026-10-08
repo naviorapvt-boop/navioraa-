@@ -65,8 +65,8 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
       setPhone('');
       setSubject('');
       setMessage('');
-    } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Submission failed. Please try again.');
+    } catch {
+      setErrorMsg('We could not submit your inquiry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -74,26 +74,21 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
 
   return (
     <div className="w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
-      {/* Header */}
       <div className="relative w-full overflow-hidden bg-[#090e1c] py-16 border-b border-[#434655]/20">
-        <div className="absolute top-10 left-1/4 w-80 h-80 bg-[#65e8ff]/10 rounded-full blur-[130px] pointer-events-none" />
         <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10 flex flex-col gap-4">
           <div className="inline-flex items-center gap-2 self-start px-3.5 py-1.5 rounded-full bg-[#252a39] border border-[#65e8ff]/30">
             <span className="w-2 h-2 rounded-full bg-[#65e8ff] animate-pulse" />
             <span className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-wider font-semibold">
-              Direct Communication Stream
+              START A CONVERSATION
             </span>
           </div>
 
           <h1 className="font-['Geist'] text-[40px] sm:text-[50px] font-bold text-[#dee2f6] tracking-tight">
-            Contact{' '}
-            <span className="bg-gradient-to-r from-[#658aff] via-[#2ad9f2] to-[#65e8ff] bg-clip-text text-transparent">
-              Navioraa HQ
-            </span>
+            Let’s talk.
           </h1>
 
           <p className="text-[17px] text-[#a6b1c5] max-w-2xl leading-relaxed">
-            Have a project scope, enterprise training requirement, or curriculum inquiry? Connect directly with our engineering triage office.
+            Have an idea, project or learning goal? Tell us where you want to go.
           </p>
         </div>
       </div>
@@ -103,16 +98,16 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
           {/* Left Details Column */}
           <div className="lg:col-span-5 flex flex-col gap-8">
             <div className="p-8 rounded-xl bg-[#10182b] border border-[#434655]/20 flex flex-col gap-6 shadow-md">
-              <h3 className="font-['Geist'] text-[22px] font-bold text-[#dee2f6]">Direct Contacts</h3>
+              <h3 className="font-['Geist'] text-[22px] font-bold text-[#dee2f6]">Contact Navioraa</h3>
 
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-lg bg-[#252a39] flex items-center justify-center text-[#65e8ff] flex-shrink-0">
                   <span className="material-symbols-outlined text-[20px]">mail</span>
                 </div>
                 <div>
-                  <div className="font-mono text-[11px] text-[#a6b1c5] uppercase">Email Channel</div>
-                  <a href={`mailto:${siteSettings.contactEmail || 'contact@navioraa.com'}`} className="text-[#dee2f6] hover:text-[#65e8ff] font-medium text-[15px] transition-colors">
-                    {siteSettings.contactEmail || 'contact@navioraa.com'}
+                  <div className="font-mono text-[11px] text-[#a6b1c5] uppercase">Email</div>
+                  <a href={`mailto:${siteSettings.contactEmail || 'naviora.pvt@gmail.com'}`} className="text-[#dee2f6] hover:text-[#65e8ff] font-medium text-[15px] transition-colors">
+                    {siteSettings.contactEmail || 'naviora.pvt@gmail.com'}
                   </a>
                 </div>
               </div>
@@ -122,14 +117,14 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
                   <span className="material-symbols-outlined text-[20px]">chat</span>
                 </div>
                 <div>
-                  <div className="font-mono text-[11px] text-[#a6b1c5] uppercase">WhatsApp Direct</div>
+                  <div className="font-mono text-[11px] text-[#a6b1c5] uppercase">WhatsApp</div>
                   <a
-                    href={`https://wa.me/${siteSettings.whatsappNumber?.replace(/[^0-9]/g, '') || '15550199283'}`}
+                    href={`https://wa.me/${siteSettings.whatsappNumber?.replace(/[^0-9]/g, '') || '919890187383'}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-[#dee2f6] hover:text-[#25d366] font-medium text-[15px] transition-colors"
                   >
-                    {siteSettings.contactPhone || '+1 (555) 019-9283'}
+                    {siteSettings.contactPhone || '+91 98901 87383'}
                   </a>
                 </div>
               </div>
@@ -139,7 +134,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
                   <span className="material-symbols-outlined text-[20px]">location_on</span>
                 </div>
                 <div>
-                  <div className="font-mono text-[11px] text-[#a6b1c5] uppercase">Engineering Labs</div>
+                  <div className="font-mono text-[11px] text-[#a6b1c5] uppercase">Location</div>
                   <p className="text-[#dee2f6] text-[14px] leading-relaxed">
                     {siteSettings.address || 'Navioraa Cloud & Engineering Labs, Global Innovation Center'}
                   </p>
@@ -148,10 +143,10 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
 
               <div className="p-4 rounded-lg bg-[#161b2a] border border-[#252a39] font-mono text-[12px] text-[#a6b1c5]">
                 <div className="flex items-center gap-2 text-[#65e8ff] font-bold mb-1">
-                  <span className="material-symbols-outlined text-[16px]">verified</span>
-                  <span>Guaranteed 4-Hour Response SLA</span>
+                  <span className="material-symbols-outlined text-[16px]">chat</span>
+                  <span>We’d love to hear from you</span>
                 </div>
-                Every RFP or training inquiry received during business hours is acknowledged by a Principal Architect.
+                Share a little about your goals and our team will be in touch.
               </div>
             </div>
           </div>
@@ -161,10 +156,10 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
             <div className="p-8 sm:p-10 rounded-xl bg-[#10182b] border border-[#434655]/30 shadow-2xl relative overflow-hidden">
               <div className="mb-6">
                 <h3 className="font-['Geist'] text-[24px] font-bold text-[#dee2f6]">
-                  Submit Architecture Brief or RFP
+                  Send a message
                 </h3>
                 <p className="text-[14px] text-[#a6b1c5] mt-1">
-                  Fill in your project requirements below. Data writes securely into Google Cloud Firestore.
+                  Tell us a little about what you have in mind.
                 </p>
               </div>
 
@@ -174,7 +169,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
                     <span className="material-symbols-outlined text-[32px]">check_circle</span>
                   </div>
                   <h4 className="font-['Geist'] text-[22px] text-[#dee2f6] font-bold">
-                    Inquiry Transmitted to Firestore
+                    Inquiry received
                   </h4>
                   <p className="text-[14px] text-[#a6b1c5] max-w-md">
                     Thank you! Your inquiry token is <strong className="text-[#65e8ff] font-mono">#{successToken}</strong>. Our triage lead will review and respond with architecture feedback.
@@ -228,7 +223,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
                         type="tel"
                         value={phone}
                         onChange={e => setPhone(e.target.value)}
-                        placeholder="+1 (555) 019-9283"
+                        placeholder="+91 98901 87383"
                         className="w-full px-4 py-2.5 rounded-lg bg-[#090e1c] border border-[#252a39] text-[#dee2f6] text-[14px] focus:outline-none focus:border-[#65e8ff]"
                       />
                     </div>
@@ -307,7 +302,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
                     <span className="material-symbols-outlined text-[18px]">
                       {isSubmitting ? 'sync' : 'send'}
                     </span>
-                    <span>{isSubmitting ? 'Transmitting to Firestore...' : 'Transmit Inquiry'}</span>
+                    <span>{isSubmitting ? 'Submitting...' : 'Submit Inquiry'}</span>
                   </button>
                 </form>
               )}

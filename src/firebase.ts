@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -11,6 +12,22 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+const functions = getFunctions(app, 'us-east1');
+
+const createTeamAdminCall = httpsCallable<
+  { email: string; password: string; displayName: string },
+  { email: string; displayName: string }
+>(functions, 'createTeamAdmin');
+const sendPasswordResetCall = httpsCallable<{ email: string }, { sent: boolean }>(functions, 'sendPasswordReset');
+
+export async function createTeamAdmin(email: string, password: string, displayName: string) {
+  return createTeamAdminCall({ email, password, displayName });
+}
+
+export async function sendPasswordReset(email: string) {
+  return sendPasswordResetCall({ email });
+}
 
 export enum OperationType {
   CREATE = 'create',
@@ -38,25 +55,9 @@ export interface FirestoreErrorInfo {
   };
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+export function handleFirestoreError(_error: unknown, operationType: OperationType, _path: string | null) {
+  console.error('Data operation failed:', operationType);
+  throw new Error('We could not complete your request. Please try again.');
 }
 
 // Connection check on boot

@@ -19,14 +19,14 @@ export const PrivacyPage: React.FC<LegalPageProps> = () => {
           <section className="space-y-3">
             <h2 className="font-['Geist'] text-[20px] font-semibold text-[#dee2f6]">1. Data Collection & Processing</h2>
             <p>
-              Navioraa Technologies collects information provided directly by users during admissions registrations, project scoping consultations, and newsletter subscriptions. All submissions are encrypted in transit via TLS 1.3 and stored in isolated Firestore security boundaries.
+              Navioraa collects information you submit through course applications, project consultations, and contact forms. We use it to respond to your request and provide the services you asked about, and apply appropriate safeguards to protect it.
             </p>
           </section>
 
           <section className="space-y-3">
             <h2 className="font-['Geist'] text-[20px] font-semibold text-[#dee2f6]">2. Zero-Trust Access Protocol</h2>
             <p>
-              Access to contact inquiries, RFP specifications, and candidate records is strictly gated by Firestore Role-Based Access Control (RBAC). Only authenticated administrators with verified cryptographic claims can query submitted telemetry.
+              Contact inquiries and application details are available only to authorized Navioraa administrators who need them to follow up.
             </p>
           </section>
 

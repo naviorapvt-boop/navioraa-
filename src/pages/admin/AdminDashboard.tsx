@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { createTeamAdmin, db, sendPasswordReset } from '../../firebase';
 import { Course, Service, Project, Resource, TeamMember, ContactInquiry } from '../../types';
 
 interface AdminDashboardProps {
@@ -9,7 +11,8 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPath }) => {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, loading, logout } = useAuth();
+  const isPrimaryOwner = user?.email?.toLowerCase() === 'naviora.pvt@gmail.com';
   const {
     siteSettings,
     services,
@@ -45,6 +48,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
     deleteInquiry
   } = useData();
 
+  useEffect(() => {
+    if (!loading && !isAdmin) navigate('/login');
+  }, [loading, isAdmin, navigate]);
+
+  if (loading || !isAdmin) {
+    return <div className="min-h-screen bg-[#0e1321]" aria-live="polite" />;
+  }
+
   // Active tab selection
   const initialTab =
     subPath === 'homepage'
@@ -61,6 +72,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
       ? 'team'
       : subPath === 'inquiries'
       ? 'inquiries'
+      : subPath === 'access'
+      ? 'access'
       : subPath === 'settings'
       ? 'settings'
       : 'courses';
@@ -68,6 +81,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [courseFilter, setCourseFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [adminUsers, setAdminUsers] = useState<{ id: string; email: string; role?: string }[]>([]);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [accessFeedback, setAccessFeedback] = useState('');
+  const [accessBusy, setAccessBusy] = useState(false);
 
   // Course Modal state (Create / Edit)
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
@@ -124,11 +145,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
   // Settings state
   const [settingsName, setSettingsName] = useState(siteSettings.siteName || 'NAVIORAA');
   const [settingsTagline, setSettingsTagline] = useState(siteSettings.tagline || 'Learn. Build. Create. Grow.');
-  const [settingsEmail, setSettingsEmail] = useState(siteSettings.contactEmail || 'contact@navioraa.com');
-  const [settingsPhone, setSettingsPhone] = useState(siteSettings.contactPhone || '+1 (555) 019-9283');
-  const [settingsWhatsapp, setSettingsWhatsapp] = useState(siteSettings.whatsappNumber || '+15550199283');
+  const [settingsEmail, setSettingsEmail] = useState(siteSettings.contactEmail || 'naviora.pvt@gmail.com');
+  const [settingsPhone, setSettingsPhone] = useState(siteSettings.contactPhone || '+91 98901 87383');
+  const [settingsWhatsapp, setSettingsWhatsapp] = useState(siteSettings.whatsappNumber || '+919890187383');
   const [settingsHeroTitle, setSettingsHeroTitle] = useState(siteSettings.heroHeadline || 'Turn Your Ideas Into Real-World Technology.');
   const [settingsHeroDesc, setSettingsHeroDesc] = useState(siteSettings.heroDescription || 'Learn in-demand IT skills, build practical enterprise-grade projects...');
+
+  useEffect(() => {
+    setSettingsEmail(siteSettings.contactEmail || 'naviora.pvt@gmail.com');
+    setSettingsPhone(siteSettings.contactPhone || '+91 98901 87383');
+    setSettingsWhatsapp(siteSettings.whatsappNumber || '+919890187383');
+  }, [siteSettings.contactEmail, siteSettings.contactPhone, siteSettings.whatsappNumber]);
 
   // Metrics calculations
   const publishedServicesCount = services.filter(s => s.status === 'published').length;
@@ -137,6 +164,87 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
   const draftCoursesCount = courses.filter(c => c.status === 'draft').length;
   const publishedProjectsCount = projects.filter(p => p.status === 'published').length;
   const unresolvedInquiries = inquiries.filter(i => i.status !== 'Resolved');
+  const inquiryStatusCounts = {
+    new: inquiries.filter(inquiry => inquiry.status === 'New').length,
+    inProgress: inquiries.filter(inquiry => inquiry.status === 'In Progress').length,
+    resolved: inquiries.filter(inquiry => inquiry.status === 'Resolved').length
+  };
+  const inquiryTypeCounts = inquiries.reduce<Record<string, number>>((counts, inquiry) => {
+    const type = inquiry.inquiryType || 'General Inquiry';
+    counts[type] = (counts[type] || 0) + 1;
+    return counts;
+  }, {});
+  const inquiryTypesByVolume = Object.entries(inquiryTypeCounts).sort((left, right) => right[1] - left[1]);
+  const recentInquiryCount = inquiries.filter(inquiry =>
+    Date.now() - new Date(inquiry.createdAt).getTime() <= 30 * 24 * 60 * 60 * 1000
+  ).length;
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    return onSnapshot(collection(db, 'admins'), snapshot => {
+      const uniqueAdmins = new Map<string, { id: string; email: string; role?: string }>();
+      uniqueAdmins.set('naviora.pvt@gmail.com', {
+        id: 'owner',
+        email: 'naviora.pvt@gmail.com',
+        role: 'Owner'
+      });
+      snapshot.docs.forEach(adminDoc => {
+        const data = adminDoc.data();
+        if (typeof data.email === 'string' && data.email.includes('@')) {
+          uniqueAdmins.set(data.email.toLowerCase(), {
+            id: adminDoc.id,
+            email: data.email,
+            role: typeof data.role === 'string' ? data.role : 'admin'
+          });
+        }
+      });
+      setAdminUsers([...uniqueAdmins.values()].sort((left, right) => left.email.localeCompare(right.email)));
+    }, () => setAccessFeedback('Could not load administrator access details.'));
+  }, [isAdmin]);
+
+  const handleCreateTeamAdmin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setAccessBusy(true);
+    setAccessFeedback('');
+    try {
+      await createTeamAdmin(newAdminEmail.trim(), newAdminPassword, newAdminName.trim());
+      setNewAdminEmail('');
+      setNewAdminName('');
+      setNewAdminPassword('');
+      setAccessFeedback('Team admin account created. Share the email and password with that team member securely.');
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error
+        ? String(error.code)
+        : '';
+      setAccessFeedback(code.endsWith('/already-exists')
+        ? 'An account with that email already exists.'
+        : code.endsWith('/permission-denied')
+          ? 'Only the primary Google admin can create team accounts.'
+          : 'Could not create the account. Check the email and use a password of at least 10 characters.');
+    } finally {
+      setAccessBusy(false);
+    }
+  };
+
+  const handleSendPasswordReset = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setAccessBusy(true);
+    setAccessFeedback('');
+    try {
+      await sendPasswordReset(resetEmail.trim());
+      setAccessFeedback(`Password reset email sent to ${resetEmail.trim()}.`);
+      setResetEmail('');
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error
+        ? String(error.code)
+        : '';
+      setAccessFeedback(code.endsWith('/failed-precondition')
+        ? 'This account uses Google sign-in and has no Firebase password to reset.'
+        : 'Could not send a reset email. Confirm the account and mail settings.');
+    } finally {
+      setAccessBusy(false);
+    }
+  };
 
   // Filtered courses
   const filteredCourses = courses.filter(c => {
@@ -269,13 +377,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
       heroHeadline: settingsHeroTitle,
       heroDescription: settingsHeroDesc
     });
-    alert('Settings synchronized to Cloud Firestore.');
+    alert('Settings saved.');
   };
 
   return (
-    <div className="min-h-screen bg-[#0e1321] text-[#dee2f6] flex flex-col antialiased">
-      {/* Fixed Left Sidebar (Desktop) */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-[#090e1c] z-50 flex flex-col pt-6 pb-6 border-r border-[#434655]/20">
+    <div
+      className="min-h-screen bg-[#0e1321] text-[#dee2f6] flex flex-col antialiased"
+      onMouseMove={event => {
+        if (event.clientX <= 12) setSidebarOpen(true);
+      }}
+    >
+      <div
+        className="fixed left-0 top-0 bottom-0 w-3 z-40"
+        onMouseEnter={() => setSidebarOpen(true)}
+        aria-hidden="true"
+      />
+      <aside
+        onMouseLeave={() => setSidebarOpen(false)}
+        className={`fixed left-0 top-0 h-full w-[min(18rem,88vw)] bg-[#090e1c] z-50 flex flex-col pt-6 pb-6 border-r border-[#434655]/20 shadow-2xl transition-transform duration-300 ease-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
         {/* Brand Header */}
         <div className="px-6 mb-8 flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-[#252a39] flex items-center justify-center border border-[#65e8ff]/30">
@@ -286,7 +406,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
               {siteSettings.siteName || 'NAVIORAA'}
             </span>
             <span className="font-mono text-[10px] text-[#65e8ff] tracking-wider uppercase font-semibold">
-              OPERATIONS OS
+              Admin Panel
             </span>
           </div>
         </div>
@@ -298,7 +418,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
         </div>
 
         {/* Sidebar Nav */}
-        <nav className="flex-1 px-4 flex flex-col gap-1">
+        <nav onClick={() => setSidebarOpen(false)} className="flex-1 px-4 flex flex-col gap-1 overflow-y-auto">
           <button
             onClick={() => setActiveTab('courses')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[14px] font-semibold transition-colors cursor-pointer ${
@@ -367,6 +487,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
           </button>
 
           <button
+            onClick={() => setActiveTab('access')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[14px] font-semibold transition-colors cursor-pointer ${
+              activeTab === 'access' ? 'bg-[#252a39] text-[#65e8ff]' : 'text-[#c3c5d7] hover:bg-[#161b2a] hover:text-[#dee2f6]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
+            <span>Admin Access</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('homepage')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[14px] font-semibold transition-colors cursor-pointer ${
               activeTab === 'homepage' ? 'bg-[#252a39] text-[#65e8ff]' : 'text-[#c3c5d7] hover:bg-[#161b2a] hover:text-[#dee2f6]'
@@ -397,28 +527,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
           </button>
         </nav>
 
-        {/* Node indicator */}
-        <div className="px-6 pt-4 border-t border-[#252a39]">
-          <div className="p-3 rounded-lg bg-[#161b2a] border border-[#252a39] flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="font-mono text-[11px] text-[#dee2f6]">PROD-US-EAST</span>
-              <span className="font-mono text-[12px] text-[#65e8ff]">v4.18.2</span>
-            </div>
-            <span className="material-symbols-outlined text-[#65e8ff] text-[18px]">verified</span>
-          </div>
-        </div>
       </aside>
 
-      {/* Main Console Content with pl-64 */}
-      <div className="lg:pl-64 flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Top Header Bar */}
-        <header className="h-16 bg-[#0e1321]/85 backdrop-blur-xl border-b border-[#252a39] flex items-center justify-between px-6 lg:px-12 sticky top-0 z-40">
+        <header className="h-16 bg-[#0e1321]/95 backdrop-blur-xl border-b border-[#252a39] flex items-center justify-between px-4 sm:px-6 lg:px-10 sticky top-0 z-40">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[12px] text-[#a6b1c5]">CONSOLE /</span>
-            <span className="font-mono text-[13px] text-[#65e8ff] font-semibold">NAV-CLUSTER-01</span>
+            <button
+              onClick={() => setSidebarOpen(open => !open)}
+              className="relative z-[60] mr-2 p-2 rounded-lg text-[#dee2f6] hover:bg-[#252a39] hover:text-[#65e8ff] transition-colors"
+              aria-label={sidebarOpen ? 'Close admin menu' : 'Open admin menu'}
+              title="Admin menu"
+            >
+              <span className="material-symbols-outlined text-[22px]">{sidebarOpen ? 'close' : 'menu'}</span>
+            </button>
+            <span className="font-mono text-[13px] text-[#65e8ff] font-semibold">Navioraa Admin</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <div className="relative hidden sm:flex items-center">
               <span className="material-symbols-outlined absolute left-3 text-[#a6b1c5] text-[18px]">search</span>
               <input
@@ -438,8 +564,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
               <span>Public Site</span>
             </button>
 
-            <div className="w-8 h-8 rounded-full bg-[#658aff] flex items-center justify-center text-[#00164e] font-bold text-xs">
-              AM
+            <div className="hidden sm:flex w-8 h-8 rounded-full bg-[#658aff] items-center justify-center text-[#00164e] font-bold text-xs">
+              {user?.email?.slice(0, 2).toUpperCase() || 'AD'}
             </div>
           </div>
         </header>
@@ -451,33 +577,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[11px] text-[#a6b1c5] uppercase tracking-widest">
-                  Navioraa Admin
+                  Administrator workspace
                 </span>
                 <span className="text-[#434655] font-mono text-[11px]">/</span>
                 <span className="text-[13px] font-semibold text-[#65e8ff] flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#65e8ff] shadow-[0_0_8px_rgba(101,232,255,0.9)] animate-pulse" />
-                  Production CMS Core
+                  Content management
                 </span>
               </div>
 
-              {/* Live DB Indicators Bar */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#2f3444] text-[#65e8ff] font-mono text-[11px]">
-                  <span className="material-symbols-outlined text-[14px]">database</span>
-                  <span>Firestore v2 Active</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#2f3444] text-[#dee2f6] font-mono text-[11px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#65e8ff]" />
-                  <span>Status: Synced {isSyncing ? '(Syncing...)' : '(0ms latency)'}</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#2f3444] text-[#bec6e0] font-mono text-[11px]">
-                  <span className="material-symbols-outlined text-[14px] text-[#b5c4ff]">verified_user</span>
-                  <span>Auth Claims: <strong className="text-[#dee2f6] font-medium">navioraa_master</strong></span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#2f3444] text-[#a6b1c5] font-mono text-[11px]">
-                  <span className="material-symbols-outlined text-[14px]">dns</span>
-                  <span>Region: us-east1</span>
-                </div>
+              <div className="pt-1 text-[12px] text-[#a6b1c5]">
+                {isSyncing ? 'Saving changes…' : `${inquiries.length} inquiries received`}
               </div>
             </div>
 
@@ -493,7 +603,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
                     <span className="text-[13px] font-bold text-[#dee2f6]">
-                      {user?.displayName || 'Alex Mercer'}
+                      {user?.displayName || 'Navioraa Admin'}
                     </span>
                     <span className="px-1.5 py-0.2 rounded bg-[#658aff]/20 text-[#658aff] font-mono text-[9px] uppercase font-bold">
                       Super Admin
@@ -615,6 +725,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
             </div>
           </section>
 
+          <section className="w-full bg-[#161b2a]/90 rounded-xl p-5 sm:p-6 border border-[#252a39] shadow-lg">
+            <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
+              <div>
+                <h2 className="font-['Geist'] text-[20px] font-bold text-[#dee2f6]">Inquiry report</h2>
+                <p className="text-[13px] text-[#a6b1c5]">Submission volume, follow-up status, and client interest by category.</p>
+              </div>
+              <span className="font-mono text-[12px] text-[#a6b1c5]">{recentInquiryCount} received in the last 30 days</span>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+              {[
+                { label: 'All inquiries', value: inquiries.length, color: 'text-[#dee2f6]' },
+                { label: 'New', value: inquiryStatusCounts.new, color: 'text-[#ffb4ab]' },
+                { label: 'In progress', value: inquiryStatusCounts.inProgress, color: 'text-[#f6c177]' },
+                { label: 'Resolved', value: inquiryStatusCounts.resolved, color: 'text-[#65e8ff]' }
+              ].map(metric => (
+                <div key={metric.label} className="border-l-2 border-[#434655] pl-3 py-1">
+                  <div className={`font-['Geist'] text-[25px] font-bold ${metric.color}`}>{metric.value}</div>
+                  <div className="text-[12px] text-[#a6b1c5]">{metric.label}</div>
+                </div>
+              ))}
+            </div>
+            {inquiryTypesByVolume.length ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+                {inquiryTypesByVolume.slice(0, 6).map(([type, count]) => (
+                  <div key={type}>
+                    <div className="flex items-center justify-between gap-3 text-[12px] mb-1.5">
+                      <span className="text-[#dee2f6] truncate">{type}</span>
+                      <span className="text-[#a6b1c5] tabular-nums">{count}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-[#090e1c] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-[#65e8ff] transition-[width] duration-500"
+                        style={{ width: `${Math.max(8, (count / inquiryTypesByVolume[0][1]) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="py-4 text-[13px] text-[#a6b1c5]">Inquiry trends will appear after the first submission.</p>
+            )}
+          </section>
+
           {/* Interactive Navigation Tabs */}
           <section className="w-full flex items-center overflow-x-auto gap-2 pb-2">
             {[
@@ -624,6 +777,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
               { id: 'resources', label: 'Learning Docs', count: resources.length, icon: 'menu_book' },
               { id: 'team', label: 'Team Faculty', count: teamMembers.length, icon: 'badge' },
               { id: 'inquiries', label: 'Recent Inquiries', count: unresolvedInquiries.length, icon: 'mark_chat_unread', alert: unresolvedInquiries.length > 0 },
+              { id: 'access', label: 'Admin Access', count: adminUsers.length, icon: 'manage_accounts' },
               { id: 'homepage', label: 'Homepage CMS', icon: 'dashboard_customize' },
               { id: 'settings', label: 'Site Settings', icon: 'tune' },
               { id: 'audit', label: 'Security Audit Logs', count: auditLogs.length, icon: 'policy' }
@@ -734,7 +888,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                           <th className="py-3 px-4 rounded-l-lg">ID / Course</th>
                           <th className="py-3 px-3">Duration</th>
                           <th className="py-3 px-3">Tech Matrix</th>
-                          <th className="py-3 px-3">Firestore Status</th>
+                          <th className="py-3 px-3">Visibility</th>
                           <th className="py-3 px-3 text-right rounded-r-lg">Actions</th>
                         </tr>
                       </thead>
@@ -1212,6 +1366,113 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                 </div>
               )}
 
+              {activeTab === 'access' && (
+                <div className="bg-[#161b2a]/90 rounded-xl p-5 sm:p-6 border border-[#252a39] shadow-xl flex flex-col gap-7">
+                  <div>
+                    <h2 className="font-['Geist'] text-[22px] font-bold text-[#dee2f6]">Team admin access</h2>
+                    <p className="text-[13px] text-[#a6b1c5] mt-1">Create an email and password account for a team member. The password is sent directly to Firebase Authentication and is never stored in Firestore.</p>
+                  </div>
+
+                  {accessFeedback && (
+                    <div role="status" className="p-3 rounded-lg border border-[#434655] bg-[#090e1c] text-[13px] text-[#dee2f6]">
+                      {accessFeedback}
+                    </div>
+                  )}
+
+                  {isPrimaryOwner ? <form onSubmit={handleCreateTeamAdmin} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="text-[12px] text-[#a6b1c5]">
+                      Team member name
+                      <input
+                        type="text"
+                        required
+                        maxLength={100}
+                        value={newAdminName}
+                        onChange={event => setNewAdminName(event.target.value)}
+                        placeholder="Team member"
+                        className="mt-1 w-full min-w-0 px-4 py-2.5 rounded-lg bg-[#090e1c] border border-[#434655] text-[#dee2f6] text-[14px] focus:outline-none focus:border-[#65e8ff]"
+                      />
+                    </label>
+                    <label className="text-[12px] text-[#a6b1c5]">
+                      Username / email
+                      <input
+                        type="email"
+                        required
+                        autoComplete="off"
+                        value={newAdminEmail}
+                        onChange={event => setNewAdminEmail(event.target.value)}
+                        placeholder="team.member@example.com"
+                        className="mt-1 w-full min-w-0 px-4 py-2.5 rounded-lg bg-[#090e1c] border border-[#434655] text-[#dee2f6] text-[14px] focus:outline-none focus:border-[#65e8ff]"
+                      />
+                    </label>
+                    <label className="text-[12px] text-[#a6b1c5]">
+                      Temporary password (10+ characters)
+                      <input
+                        type="password"
+                        required
+                        minLength={10}
+                        maxLength={128}
+                        autoComplete="new-password"
+                        value={newAdminPassword}
+                        onChange={event => setNewAdminPassword(event.target.value)}
+                        placeholder="Set an initial password"
+                        className="mt-1 w-full min-w-0 px-4 py-2.5 rounded-lg bg-[#090e1c] border border-[#434655] text-[#dee2f6] text-[14px] focus:outline-none focus:border-[#65e8ff]"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={accessBusy}
+                      className="self-end px-4 py-2.5 rounded-lg bg-[#65e8ff] text-[#090e1c] font-semibold text-[13px] disabled:opacity-50"
+                    >
+                      {accessBusy ? 'Creating account…' : 'Create team login'}
+                    </button>
+                  </form> : (
+                    <p className="text-[13px] text-[#a6b1c5]">Only the primary owner can create team login accounts.</p>
+                  )}
+
+                  <div>
+                    <h3 className="text-[15px] font-semibold text-[#dee2f6] mb-3">Current administrators</h3>
+                    {adminUsers.length ? (
+                      <ul className="divide-y divide-[#252a39] border-y border-[#252a39]">
+                        {adminUsers.map(admin => (
+                          <li key={admin.email} className="py-3 flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-[13px] text-[#dee2f6] break-all">{admin.email}</span>
+                            <span className="text-[11px] uppercase tracking-wide text-[#a6b1c5]">{admin.role || 'Admin'}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-[13px] text-[#a6b1c5]">No administrator records found.</p>
+                    )}
+                  </div>
+
+                  <div className="border-t border-[#252a39] pt-6">
+                    <h3 className="text-[15px] font-semibold text-[#dee2f6]">Send a password reset</h3>
+                    <p className="text-[12px] text-[#a6b1c5] mt-1 mb-4">
+                      Sends a secure reset link to an account using email and password. Google account passwords must be changed through Google.
+                    </p>
+                    <form onSubmit={handleSendPasswordReset} className="flex flex-col sm:flex-row gap-3">
+                      <label className="sr-only" htmlFor="reset-account-email">Account email</label>
+                      <input
+                        id="reset-account-email"
+                        type="email"
+                        required
+                        value={resetEmail}
+                        onChange={event => setResetEmail(event.target.value)}
+                        placeholder="account@example.com"
+                        className="min-w-0 flex-1 px-4 py-2.5 rounded-lg bg-[#090e1c] border border-[#434655] text-[#dee2f6] text-[14px] focus:outline-none focus:border-[#65e8ff]"
+                      />
+                      <button
+                        type="submit"
+                        disabled={accessBusy}
+                        className="px-4 py-2.5 rounded-lg border border-[#434655] text-[#dee2f6] text-[13px] hover:bg-[#252a39] disabled:opacity-50"
+                      >
+                        Send reset email
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+
               {/* === HOMEPAGE CMS TAB === */}
               {activeTab === 'homepage' && (
                 <div className="bg-[#161b2a]/90 backdrop-blur-xl rounded-xl p-6 border border-[#252a39] shadow-xl flex flex-col">
@@ -1311,7 +1572,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                       type="submit"
                       className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-[#658aff] to-[#2ad9f2] text-[#090e1c] font-bold text-[13px] cursor-pointer shadow-md"
                     >
-                      Save Settings to Firestore
+                      Save Settings
                     </button>
                   </form>
                 </div>
@@ -1400,7 +1661,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                         {/* Quick Actions */}
                         <div className="flex items-center justify-between gap-1 pt-2 mt-1 border-t border-[#252a39]/60">
                           <a
-                            href={`https://wa.me/${inq.phone?.replace(/[^0-9]/g, '') || '15550199283'}`}
+                            href={`https://wa.me/${inq.phone?.replace(/[^0-9]/g, '') || '919890187383'}`}
                             target="_blank"
                             rel="noreferrer"
                             className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded bg-[#252a39] hover:bg-[#25d366]/20 hover:text-[#25d366] text-[#a6b1c5] text-[11px] font-semibold transition-colors"
@@ -1456,15 +1717,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
               <div className="flex flex-col">
                 <span className="text-[13px] font-semibold text-[#dee2f6]">Role-Based Access Control Active</span>
                 <span className="text-[12px] text-[#a6b1c5]">
-                  Cloud Audit Logging active. Unauthenticated writes rejected by Firestore security rules.
+                  Administrator actions are recorded. Inquiry details are visible to administrators only.
                 </span>
               </div>
             </div>
 
             <div className="flex items-center gap-4 font-mono text-[11px]">
-              <span>Audit Stream: <strong className="text-[#65e8ff]">TLS_AES_256_GCM_SHA384</strong></span>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#65e8ff]" />
-              <span className="text-[#dee2f6] font-semibold">Node #01-US-EAST</span>
+              <span>{adminUsers.length} administrators</span>
             </div>
           </footer>
         </main>
@@ -1486,7 +1745,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                     {editingCourse ? 'Edit Course Curricula' : 'Register New Academy Course'}
                   </h3>
                   <p className="font-mono text-[11px] text-[#a6b1c5]">
-                    Synchronizing directly to Google Cloud Firestore
+                    Course details
                   </p>
                 </div>
               </div>
@@ -1646,7 +1905,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                   type="submit"
                   className="px-6 py-2 rounded-lg bg-gradient-to-r from-[#658aff] to-[#2ad9f2] text-[#090e1c] font-bold text-[13px] shadow-[0_0_12px_rgba(41,217,242,0.3)] hover:brightness-110 active:scale-95 transition-all cursor-pointer"
                 >
-                  {editingCourse ? 'Save Changes' : 'Commit to Firestore'}
+                  {editingCourse ? 'Save Changes' : 'Create Course'}
                 </button>
               </div>
             </form>

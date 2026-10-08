@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
+import { Project } from '../types';
 
 interface ProjectsPageProps {
   navigate: (path: string) => void;
@@ -9,7 +10,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ navigate }) => {
   const { projects } = useData();
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedDemoProject, setSelectedDemoProject] = useState<string | null>(null);
+  const [selectedDemoProject, setSelectedDemoProject] = useState<Project | null>(null);
 
   const publishedProjects = projects.filter(p => p.status === 'published');
 
@@ -33,27 +34,19 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ navigate }) => {
   });
 
   return (
-    <div className="w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
+    <div className="public-projects w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
       {/* Hero Header */}
       <div className="relative w-full overflow-hidden bg-[#090e1c] py-16 border-b border-[#434655]/20">
         <div className="absolute -top-32 -left-32 w-80 h-80 bg-[#658aff]/15 rounded-full blur-[130px] pointer-events-none" />
         <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10 flex flex-col gap-4">
-          <div className="inline-flex items-center gap-2 self-start px-3.5 py-1.5 rounded-full bg-[#252a39] border border-[#65e8ff]/30">
-            <span className="w-2 h-2 rounded-full bg-[#65e8ff] animate-pulse" />
-            <span className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-wider font-semibold">
-              Live Verified Workloads
-            </span>
-          </div>
+          <p className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-wider font-semibold">SELECTED WORK / NAVIORAA</p>
 
           <h1 className="font-['Geist'] text-[40px] sm:text-[50px] font-bold text-[#dee2f6] tracking-tight">
-            Flagship Engineering Systems &{' '}
-            <span className="bg-gradient-to-r from-[#658aff] via-[#2ad9f2] to-[#65e8ff] bg-clip-text text-transparent">
-              Portfolio
-            </span>
+            Useful ideas,<br />made tangible.
           </h1>
 
           <p className="text-[17px] text-[#a6b1c5] max-w-2xl leading-relaxed">
-            Real production architectures engineered by Navioraa architects and senior cohort fellows. Tested against simulated network partitions, heavy concurrency, and multi-tenant telemetry.
+            Digital projects shaped by practical thinking, thoughtful engineering and the people who use them.
           </p>
         </div>
       </div>
@@ -94,40 +87,32 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ navigate }) => {
 
       {/* Projects Showcase Grid */}
       <div className="max-w-7xl mx-auto px-6 lg:px-12 pb-24">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {filteredProjects.map(proj => (
+        <div className="project-editorial-list">
+          {filteredProjects.map((proj, index) => (
             <div
               key={proj.id}
-              className="rounded-xl bg-[#10182b] border border-[#434655]/20 hover:border-[#65e8ff]/40 overflow-hidden shadow-lg flex flex-col justify-between group transition-all"
+              className={`project-editorial-entry group ${index % 2 ? 'is-offset' : ''}`}
             >
-              <div className="relative h-64 w-full bg-[#161b2a] overflow-hidden">
+              <div className="project-editorial-image">
                 <img
                   src={proj.imageUrl}
                   alt={proj.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
+                  className="w-full h-full object-cover transition-transform duration-500"
+                  loading="lazy"
+                  onError={event => { event.currentTarget.style.display = 'none'; }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#10182b] via-[#10182b]/40 to-transparent" />
-                <div className="absolute top-4 left-4 inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#090e1c]/80 backdrop-blur-md border border-[#434655]/30">
-                  <span className="w-2 h-2 rounded-full bg-[#65e8ff] animate-pulse" />
-                  <span className="font-mono text-[11px] text-[#65e8ff] uppercase font-bold">
-                    {proj.badge || proj.category}
-                  </span>
-                </div>
+                <span>{String(index + 1).padStart(2, '0')}</span>
               </div>
 
-              <div className="p-8 flex flex-col flex-1 justify-between">
+              <div className="project-editorial-copy">
                 <div>
-                  <h3 className="font-['Geist'] text-[24px] text-[#dee2f6] font-bold mb-3 group-hover:text-[#65e8ff] transition-colors">
-                    {proj.title}
-                  </h3>
-                  <p className="text-[14px] text-[#a6b1c5] mb-6 leading-relaxed">
-                    {proj.description}
-                  </p>
+                  <p className="project-category">{proj.category}</p>
+                  <h2>{proj.title}</h2>
+                  <p className="project-description">{proj.description}</p>
                   <div className="flex flex-wrap gap-2 mb-8">
                     {proj.technologies?.map(tech => (
                       <span
                         key={tech}
-                        className="px-3 py-1 rounded bg-[#161b2a] border border-[#252a39] text-[#65e8ff] font-mono text-[12px]"
                       >
                         {tech}
                       </span>
@@ -135,13 +120,13 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ navigate }) => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-[#252a39]">
+                <div className="project-editorial-actions">
                   <button
-                    onClick={() => setSelectedDemoProject(proj.title)}
+                    onClick={() => setSelectedDemoProject(proj)}
                     className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#65e8ff] hover:text-[#b5c4ff] transition-colors cursor-pointer"
                   >
-                    <span>Architecture Telemetry</span>
-                    <span className="material-symbols-outlined text-[18px]">account_tree</span>
+                    <span>Project details</span>
+                    <span aria-hidden="true">↗</span>
                   </button>
 
                   <div className="flex items-center gap-2">
@@ -150,18 +135,16 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ navigate }) => {
                         href={proj.sourceUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-2 rounded-lg bg-[#252a39] text-[#dee2f6] hover:text-[#65e8ff] transition-colors"
                         title="GitHub Repository"
                       >
-                        <span className="material-symbols-outlined text-[18px]">code</span>
+                        Source ↗
                       </a>
                     )}
                     <button
-                      onClick={() => setSelectedDemoProject(proj.title)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#252a39] hover:bg-[#343949] text-[#dee2f6] text-[13px] font-semibold transition-colors cursor-pointer border border-[#434655]/30"
+                      onClick={() => setSelectedDemoProject(proj)}
                     >
-                      <span>Simulate Demo</span>
-                      <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                      <span>View project</span>
+                      <span aria-hidden="true">↗</span>
                     </button>
                   </div>
                 </div>
@@ -185,35 +168,30 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ navigate }) => {
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#65e8ff] animate-pulse" />
               <span className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-wider font-bold">
-                Live Deployment Simulation
+                Project preview
               </span>
             </div>
 
             <h3 className="font-['Geist'] text-[24px] text-[#dee2f6] font-bold">
-              {selectedDemoProject}
+              {selectedDemoProject.title}
             </h3>
 
-            <div className="bg-[#090e1c] rounded-lg p-4 border border-[#252a39] font-mono text-[12px] text-[#a6b1c5] space-y-2">
-              <div className="text-[#65e8ff]">$ curl -X GET https://cluster-us-east.navioraa.internal/health</div>
-              <div className="text-[#dee2f6]">{'{"status": "UP", "uptime": "99.98%", "nodes": 16, "latency_ms": 3.4}'}</div>
-              <div className="text-[#65e8ff]">$ kubectl get pods -n production</div>
-              <div className="text-[#dee2f6]">
-                navioraa-engine-01-prod &nbsp;&nbsp;&nbsp;&nbsp; 1/1 &nbsp;&nbsp; Running &nbsp;&nbsp; 0 &nbsp;&nbsp; 42d<br />
-                navioraa-engine-02-prod &nbsp;&nbsp;&nbsp;&nbsp; 1/1 &nbsp;&nbsp; Running &nbsp;&nbsp; 0 &nbsp;&nbsp; 42d<br />
-                navioraa-engine-03-prod &nbsp;&nbsp;&nbsp;&nbsp; 1/1 &nbsp;&nbsp; Running &nbsp;&nbsp; 0 &nbsp;&nbsp; 42d
-              </div>
+            <div className="bg-[#090e1c] rounded-lg p-4 border border-[#252a39] text-[14px] text-[#a6b1c5] leading-relaxed">
+              {selectedDemoProject.description}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {selectedDemoProject.technologies?.map(technology => (
+                <span key={technology} className="px-2 py-1 border border-[#252a39] text-[11px] text-[#a6b1c5]">{technology}</span>
+              ))}
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <span className="text-[13px] text-[#a6b1c5]">
-                Production node replication in US-EAST-1 and EU-CENTRAL-1.
-              </span>
-              <button
-                onClick={() => setSelectedDemoProject(null)}
-                className="px-5 py-2 rounded-lg bg-[#252a39] text-[#dee2f6] hover:bg-[#343949] text-[13px] font-semibold cursor-pointer"
-              >
-                Close Console
-              </button>
+              <div className="flex flex-wrap items-center gap-4">
+                {selectedDemoProject.demoUrl && <a href={selectedDemoProject.demoUrl} target="_blank" rel="noreferrer" className="text-[13px] text-[#65e8ff]">Open project ↗</a>}
+                {selectedDemoProject.sourceUrl && <a href={selectedDemoProject.sourceUrl} target="_blank" rel="noreferrer" className="text-[13px] text-[#65e8ff]">Source ↗</a>}
+              </div>
+              <button onClick={() => setSelectedDemoProject(null)} className="px-5 py-2 rounded-lg bg-[#252a39] text-[#dee2f6] hover:bg-[#343949] text-[13px] font-semibold cursor-pointer">Close</button>
             </div>
           </div>
         </div>

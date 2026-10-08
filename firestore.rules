@@ -11,11 +11,13 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == "naviora.pvt@gmail.com" ||
-        request.auth.token.email == "alex.mercer@navioraa.internal" ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
+      return isSignedIn() &&
+        (
+          (request.auth.token.email == 'naviora.pvt@gmail.com' &&
+           request.auth.token.email_verified == true &&
+           request.auth.token.firebase.sign_in_provider == 'google.com') ||
+          request.auth.token.admin == true
+        );
     }
 
     // Public readable site settings, admin editable
@@ -56,7 +58,12 @@ service cloud.firestore {
 
     // Contact Inquiries: Anyone can submit an inquiry/RFP; strictly private to admins
     match /contactInquiries/{inquiryId} {
-      allow create: if request.resource.data.name is string &&
+      allow create: if request.resource.data.keys().hasOnly([
+                         'id', 'name', 'email', 'phone', 'inquiryType', 'subject',
+                         'message', 'budget', 'timeline', 'services', 'status', 'createdAt'
+                       ]) &&
+                       request.resource.data.status == 'New' &&
+                       request.resource.data.name is string &&
                        request.resource.data.name.size() > 0 &&
                        request.resource.data.name.size() <= 120 &&
                        request.resource.data.email is string &&
@@ -75,8 +82,9 @@ service cloud.firestore {
     }
 
     match /admins/{adminId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if isAdmin() ||
+                    (isSignedIn() && (request.auth.uid == adminId || request.auth.token.email == adminId));
+      allow write: if false;
     }
   }
 }

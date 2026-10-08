@@ -29,7 +29,6 @@ import {
   initialProjects,
   initialResources,
   initialTeamMembers,
-  initialInquiries
 } from '../data/seedData';
 
 interface DataContextType {
@@ -98,6 +97,30 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+function normalizeCompanyContact(settings: SiteSettings): SiteSettings {
+  return {
+    ...settings,
+    contactEmail: settings.contactEmail === 'contact@navioraa.com'
+      ? 'naviora.pvt@gmail.com'
+      : settings.contactEmail,
+    contactPhone: settings.contactPhone === '+1 (555) 019-9283'
+      ? '+91 98901 87383'
+      : settings.contactPhone,
+    whatsappNumber: ['+15550199283', '15550199283'].includes(settings.whatsappNumber)
+      ? '+919890187383'
+      : settings.whatsappNumber
+  };
+}
+
+function normalizeTeamMember(member: TeamMember): TeamMember {
+  const seededProfile = initialTeamMembers.find(profile => profile.id === member.id);
+  const legacyFounder = member.id === 'team-abhishek' && member.name === 'Abhishek Sharma';
+  const legacyCoFounder = member.id === 'team-alex' && member.name === 'Alex Mercer';
+  return seededProfile && (legacyFounder || legacyCoFounder)
+    ? { ...member, ...seededProfile }
+    : member;
+}
+
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAdmin } = useAuth();
 
@@ -107,7 +130,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [resources, setResources] = useState<Resource[]>(initialResources);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(initialTeamMembers);
-  const [inquiries, setInquiries] = useState<ContactInquiry[]>(initialInquiries);
+  const [inquiries, setInquiries] = useState<ContactInquiry[]>([]);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -138,6 +161,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const settingsSnap = await getDocs(collection(db, 'siteSettings'));
       if (settingsSnap.empty) {
         await setDoc(doc(db, 'siteSettings', 'global'), initialSiteSettings, { merge: true });
+      } else {
+        const globalSettings = settingsSnap.docs.find(setting => setting.id === 'global');
+        const storedSettings = globalSettings?.data();
+        if (storedSettings) {
+          const migration: Partial<SiteSettings> = {};
+          if (storedSettings.contactEmail === 'contact@navioraa.com') {
+            migration.contactEmail = 'naviora.pvt@gmail.com';
+          }
+          if (storedSettings.contactPhone === '+1 (555) 019-9283') {
+            migration.contactPhone = '+91 98901 87383';
+          }
+          if (['+15550199283', '15550199283'].includes(storedSettings.whatsappNumber)) {
+            migration.whatsappNumber = '+919890187383';
+          }
+          if (Object.keys(migration).length) {
+            await setDoc(doc(db, 'siteSettings', 'global'), migration, { merge: true });
+          }
+        }
       }
 
       // 2. Services
@@ -178,6 +219,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         for (const t of initialTeamMembers) {
           await setDoc(doc(db, 'teamMembers', t.id), t, { merge: true });
         }
+      } else {
+        const legacyProfiles = [
+          {
+            id: 'team-abhishek',
+            oldName: 'Abhishek Sharma',
+            profile: {
+              name: 'Shubham Mahadik',
+              role: 'Founder',
+              bio: 'Founder of Navioraa, focused on practical technology training and digital project work.',
+              skills: [],
+              photoUrl: '',
+              linkedinUrl: 'https://www.linkedin.com/in/shubham-mahadik-927770276/'
+            }
+          },
+          {
+            id: 'team-alex',
+            oldName: 'Alex Mercer',
+            profile: {
+              name: 'Sakshi Bekellu',
+              role: 'Co-founder',
+              bio: 'Co-founder at Navioraa, supporting practical learning and digital project work.',
+              skills: [],
+              photoUrl: '',
+              linkedinUrl: '',
+              githubUrl: ''
+            }
+          }
+        ];
+        for (const legacyProfile of legacyProfiles) {
+          const storedProfile = teamSnap.docs.find(member => member.id === legacyProfile.id);
+          if (storedProfile?.data().name === legacyProfile.oldName) {
+            await setDoc(doc(db, 'teamMembers', legacyProfile.id), legacyProfile.profile, { merge: true });
+          }
+        }
       }
     } catch (err) {
       console.warn('Seed verification note:', err);
@@ -196,7 +271,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Site Settings
     const unsubSettings = onSnapshot(doc(db, 'siteSettings', 'global'), (docSnap) => {
       if (docSnap.exists()) {
-        setSiteSettings(docSnap.data() as SiteSettings);
+        setSiteSettings(normalizeCompanyContact(docSnap.data() as SiteSettings));
       }
     }, (error) => {
       console.warn('Settings snapshot error:', error.message);
@@ -248,7 +323,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 6. Team Members
     const unsubTeam = onSnapshot(collection(db, 'teamMembers'), (snap) => {
       if (!snap.empty) {
-        const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as TeamMember));
+        const items = snap.docs.map(d => normalizeTeamMember({ id: d.id, ...d.data() } as TeamMember));
         items.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
         setTeamMembers(items);
       }
@@ -273,11 +348,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isAdmin) return;
 
     const unsubInquiries = onSnapshot(collection(db, 'contactInquiries'), (snap) => {
-      if (!snap.empty) {
-        const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as ContactInquiry));
-        items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setInquiries(items);
-      }
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as ContactInquiry));
+      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setInquiries(items);
     }, (error) => {
       console.warn('Inquiries snapshot error:', error.message);
     });
@@ -660,15 +733,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     timeline?: string;
     services?: string[];
   }) => {
-    const id = `INQ-${Math.floor(1000 + Math.random() * 9000)}`;
+    const inquiryRef = doc(collection(db, 'contactInquiries'));
+    const id = inquiryRef.id;
     const newInquiry: ContactInquiry = {
-      ...data,
+      name: data.name,
+      email: data.email,
+      inquiryType: data.inquiryType,
+      message: data.message,
+      ...(data.phone ? { phone: data.phone } : {}),
+      ...(data.subject ? { subject: data.subject } : {}),
+      ...(data.budget ? { budget: data.budget } : {}),
+      ...(data.timeline ? { timeline: data.timeline } : {}),
+      ...(data.services ? { services: data.services } : {}),
       id,
       status: 'New',
       createdAt: new Date().toISOString()
     };
     try {
-      await setDoc(doc(db, 'contactInquiries', id), newInquiry);
+      await setDoc(inquiryRef, newInquiry);
       setInquiries(prev => [newInquiry, ...prev]);
       return id;
     } catch (e) {
@@ -679,7 +761,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateInquiryStatus = async (id: string, status: InquiryStatus, adminNotes?: string) => {
     setIsSyncing(true);
-    const existing = inquiries.find(inq => inq.id === id) || initialInquiries.find(inq => inq.id === id);
+    const existing = inquiries.find(inq => inq.id === id);
     const payload: Partial<ContactInquiry> = {
       ...(existing || {}),
       status,

@@ -22,6 +22,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ navigate }) => {
   const [studyPace, setStudyPace] = useState<string>('part-time');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [enrollmentSuccess, setEnrollmentSuccess] = useState<boolean>(false);
+  const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
 
   // Public courses: only published records
   const publishedCourses = courses.filter((c) => c.status === 'published');
@@ -57,11 +58,13 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ navigate }) => {
   const handleOpenEnrollModal = (course: Course) => {
     setSelectedCourseForModal(course);
     setEnrollmentSuccess(false);
+    setEnrollmentError(null);
   };
 
   const handleCloseEnrollModal = () => {
     setSelectedCourseForModal(null);
     setEnrollmentSuccess(false);
+    setEnrollmentError(null);
     setApplicantName('');
     setApplicantEmail('');
   };
@@ -71,6 +74,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ navigate }) => {
     if (!selectedCourseForModal || !applicantName || !applicantEmail) return;
 
     setIsSubmitting(true);
+    setEnrollmentError(null);
     try {
       await submitInquiry({
         name: applicantName,
@@ -81,15 +85,15 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ navigate }) => {
         services: [selectedCourseForModal.title]
       });
       setEnrollmentSuccess(true);
-    } catch (err) {
-      console.error('Enrollment error:', err);
+    } catch {
+      setEnrollmentError('We could not submit your application. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
+    <div className="public-courses w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
       {/* Top Banner & Header */}
       <div className="relative w-full overflow-hidden bg-[#090e1c] py-16 border-b border-[#434655]/20">
         <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-[#658aff]/10 blur-3xl pointer-events-none" />
@@ -101,20 +105,20 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ navigate }) => {
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#252a39] font-mono text-[11px] text-[#65e8ff] uppercase tracking-widest border border-[#65e8ff]/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#65e8ff] animate-pulse" />
-                Catalog Engine v3.4 // Live
+                Enrollment now open
               </span>
-              <span className="text-[#8d90a0] font-mono text-[12px]">:: SECURE_ENDPOINT</span>
+                <span className="text-[#8d90a0] font-mono text-[12px]">Explore the current learning paths</span>
             </div>
 
             <div className="flex items-center gap-6 text-[#a6b1c5] font-mono text-[12px]">
               <span className="flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[16px] text-[#65e8ff]">memory</span>
-                Kernel Latency: 0.12ms
+                Instructor-led learning
               </span>
               <span className="hidden sm:inline text-[#434655]">•</span>
               <span className="hidden sm:flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[16px] text-[#b5c4ff]">verified_user</span>
-                ISO/IEC 27001
+                Learn by building
               </span>
             </div>
           </div>
@@ -143,38 +147,33 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ navigate }) => {
                   <div className="flex flex-col">
                     <span className="font-['Geist'] text-[18px] text-[#dee2f6] font-bold">Fall Cohort</span>
                     <span className="font-mono text-[11px] text-[#a6b1c5] uppercase">
-                      Admissions Closing in 48h
+                      Applications open
                     </span>
                   </div>
                 </div>
                 <span className="px-2.5 py-1 rounded bg-[#00cee7]/20 border border-[#00cee7]/40 text-[#00cee7] font-mono text-[11px] uppercase font-bold">
-                  92% Filled
+                  Enrolling
                 </span>
               </div>
             </div>
           </div>
 
           {/* 4 Metrics Strip */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4">
             <div className="p-4 rounded-xl bg-[#10182b] border border-[#252a39] flex flex-col gap-1 shadow-sm">
               <span className="font-mono text-[11px] text-[#65e8ff] uppercase font-bold">Certified Tracks</span>
               <span className="font-['Geist'] text-[30px] font-bold text-[#dee2f6]">{publishedCourses.length} Total</span>
               <span className="text-[13px] text-[#a6b1c5]">Validated enterprise syllabi</span>
             </div>
             <div className="p-4 rounded-xl bg-[#10182b] border border-[#252a39] flex flex-col gap-1 shadow-sm">
-              <span className="font-mono text-[11px] text-[#b5c4ff] uppercase font-bold">Project Ratio</span>
-              <span className="font-['Geist'] text-[30px] font-bold text-[#dee2f6]">100%</span>
-              <span className="text-[13px] text-[#a6b1c5]">Production repo deliverables</span>
+              <span className="font-mono text-[11px] text-[#b5c4ff] uppercase font-bold">Project practice</span>
+              <span className="font-['Geist'] text-[27px] font-bold text-[#dee2f6]">Hands-on</span>
+              <span className="text-[13px] text-[#a6b1c5]">Build as you learn</span>
             </div>
             <div className="p-4 rounded-xl bg-[#10182b] border border-[#252a39] flex flex-col gap-1 shadow-sm">
               <span className="font-mono text-[11px] text-[#65e8ff] uppercase font-bold">Mentorship SLA</span>
               <span className="font-['Geist'] text-[30px] font-bold text-[#dee2f6]">1-on-1</span>
               <span className="text-[13px] text-[#a6b1c5]">Live code reviews & office hours</span>
-            </div>
-            <div className="p-4 rounded-xl bg-[#10182b] border border-[#252a39] flex flex-col gap-1 shadow-sm">
-              <span className="font-mono text-[11px] text-[#b5c4ff] uppercase font-bold">Firestore Latency</span>
-              <span className="font-['Geist'] text-[30px] font-bold text-[#dee2f6]">0ms</span>
-              <span className="text-[13px] text-[#a6b1c5]">Cached index query edge</span>
             </div>
           </div>
         </div>
@@ -280,14 +279,14 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ navigate }) => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="course-editorial-list">
             {filteredCourses.map((course) => {
               const isCurriculumOpen = openCurriculumId === course.id;
 
               return (
                 <div
                   key={course.id}
-                  className="flex flex-col rounded-xl bg-[#10182b] border border-[#434655]/20 shadow-lg overflow-hidden group hover:border-[#65e8ff]/40 transition-all duration-300"
+                  className="course-editorial-entry flex flex-col rounded-xl bg-[#10182b] border border-[#434655]/20 shadow-lg overflow-hidden group hover:border-[#65e8ff]/40 transition-all duration-300"
                 >
                   {/* Thumbnail Banner */}
                   <div className="relative h-48 w-full bg-[#161b2a] overflow-hidden">
@@ -353,9 +352,6 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ navigate }) => {
                         <span className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[16px] text-[#65e8ff]">code_blocks</span>
                           {course.curriculum?.length || 4} Live Capstones
-                        </span>
-                        <span className="text-[#dee2f6] font-['Geist'] text-[18px] font-bold">
-                          {course.price || '$1,200'}
                         </span>
                       </div>
 
@@ -554,6 +550,11 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ navigate }) => {
 
             {!enrollmentSuccess ? (
               <>
+                {enrollmentError && (
+                  <div role="alert" className="p-3 rounded-lg bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] text-[13px]">
+                    {enrollmentError}
+                  </div>
+                )}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#65e8ff] animate-pulse" />
@@ -659,10 +660,10 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ navigate }) => {
                   <span className="material-symbols-outlined text-[32px]">check_circle</span>
                 </div>
                 <h4 className="font-['Geist'] text-[22px] text-[#dee2f6] font-bold">
-                  Registration Transmitted
+                  Application received
                 </h4>
                 <p className="text-[14px] text-[#a6b1c5] leading-relaxed">
-                  Your application for <strong className="text-[#dee2f6]">{selectedCourseForModal.title}</strong> has been stored in Firestore. Our admissions staff has dispatched confirmation credentials to your inbox.
+                  Your application for <strong className="text-[#dee2f6]">{selectedCourseForModal.title}</strong> has been received. Our admissions team will review it and contact you using the email address provided.
                 </p>
                 <button
                   onClick={handleCloseEnrollModal}

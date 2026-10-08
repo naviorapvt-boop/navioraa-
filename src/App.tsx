@@ -92,13 +92,15 @@ export default function App() {
   return (
     <AuthProvider>
       <DataProvider>
-        <div className="min-h-screen bg-[#080d1b] text-[#dee2f6] flex flex-col font-['Inter'] selection:bg-[#65e8ff] selection:text-[#090e1c]">
+        <div className="app-shell min-h-screen flex flex-col">
           {!isAdminRoute && !isLoginRoute && (
             <Header currentPath={currentPath} navigate={navigate} />
           )}
 
-          <div className={`flex-1 ${!isAdminRoute && !isLoginRoute ? 'pt-20' : ''}`}>
+          <div className="flex-1">
+            <div key={currentPath} className={!isAdminRoute && !isLoginRoute ? 'public-page page-transition' : undefined}>
             {renderContent()}
+            </div>
           </div>
 
           {!isAdminRoute && !isLoginRoute && (

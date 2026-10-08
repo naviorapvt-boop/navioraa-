@@ -7,22 +7,17 @@ interface AdminLoginProps {
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ navigate }) => {
   const {
-    user,
     isAdmin,
     loginWithGoogle,
-    loginWithEmail,
-    demoAdminLogin,
-    resetPassword,
+    loginWithPassword,
     authError,
     clearAuthError
   } = useAuth();
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<'owner' | 'team'>('owner');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
-  const [showForgot, setShowForgot] = useState(false);
 
   // If already logged in as admin, redirect to /admin
   React.useEffect(() => {
@@ -30,20 +25,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ navigate }) => {
       navigate('/admin');
     }
   }, [isAdmin, navigate]);
-
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    clearAuthError();
-    setIsSubmitting(true);
-    try {
-      await loginWithEmail(email, password);
-      navigate('/admin');
-    } catch {
-      // Handled in auth context
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleGoogleLogin = async () => {
     clearAuthError();
@@ -58,27 +39,17 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ navigate }) => {
     }
   };
 
-  const handleDemoAdmin = async () => {
+  const handleTeamLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     clearAuthError();
     setIsSubmitting(true);
     try {
-      await demoAdminLogin();
+      await loginWithPassword(email, password);
       navigate('/admin');
     } catch {
-      // Handled in context
+      // Auth context provides a safe, user-facing error.
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    try {
-      await resetPassword(email);
-      setResetSent(true);
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -95,10 +66,10 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ navigate }) => {
             <span className="material-symbols-outlined text-[#65e8ff] text-[28px]">terminal</span>
           </div>
           <h2 className="font-['Geist'] text-[24px] font-bold text-[#dee2f6]">
-            Navioraa Operations OS
+            Navioraa Admin
           </h2>
           <p className="text-[13px] text-[#a6b1c5] font-mono mt-1">
-            SECURE ACCESS :: NODE CLUSTER #01
+            Owner and team access
           </p>
         </div>
 
@@ -110,89 +81,29 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ navigate }) => {
           </div>
         )}
 
-        {resetSent ? (
-          <div className="p-6 rounded-xl bg-[#161b2a] border border-[#65e8ff]/30 text-center flex flex-col items-center gap-3">
-            <span className="material-symbols-outlined text-[#65e8ff] text-[36px]">mark_email_read</span>
-            <h4 className="font-['Geist'] text-[18px] text-[#dee2f6] font-bold">Reset Link Transmitted</h4>
-            <p className="text-[13px] text-[#a6b1c5]">
-              Check your inbox for password reset instructions.
-            </p>
-            <button
-              onClick={() => {
-                setResetSent(false);
-                setShowForgot(false);
-              }}
-              className="mt-2 text-xs font-mono text-[#65e8ff] hover:underline"
-            >
-              Return to Login
-            </button>
-          </div>
-        ) : showForgot ? (
-          <form onSubmit={handleResetPassword} className="space-y-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="font-mono text-[11px] text-[#dee2f6] uppercase">Admin Email Address</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="alex.mercer@navioraa.internal"
-                className="w-full px-4 py-2.5 rounded-lg bg-[#090e1c] border border-[#252a39] text-[#dee2f6] text-[14px] focus:outline-none focus:border-[#65e8ff]"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-2.5 rounded-lg bg-gradient-to-r from-[#658aff] to-[#2ad9f2] text-[#090e1c] font-bold text-[13px] cursor-pointer"
-            >
-              Send Password Reset
-            </button>
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setShowForgot(false)}
-                className="text-xs text-[#a6b1c5] hover:text-[#dee2f6] font-mono cursor-pointer"
-              >
-                Back to Sign In
-              </button>
-            </div>
-          </form>
-        ) : (
+        <div className="mb-5 grid grid-cols-2 gap-2 rounded-lg bg-[#090e1c] p-1">
+          <button
+            type="button"
+            onClick={() => { setLoginMethod('owner'); clearAuthError(); }}
+            className={`py-2 rounded-md text-[12px] font-semibold transition-colors ${loginMethod === 'owner' ? 'bg-[#252a39] text-[#dee2f6]' : 'text-[#a6b1c5]'}`}
+          >
+            Owner Google
+          </button>
+          <button
+            type="button"
+            onClick={() => { setLoginMethod('team'); clearAuthError(); }}
+            className={`py-2 rounded-md text-[12px] font-semibold transition-colors ${loginMethod === 'team' ? 'bg-[#252a39] text-[#dee2f6]' : 'text-[#a6b1c5]'}`}
+          >
+            Team account
+          </button>
+        </div>
+
+        {loginMethod === 'owner' ? (
           <>
-            {/* Quick One-Click Super Admin Access for AI Studio */}
-            <div className="mb-6 p-4 rounded-xl bg-[#161b2a] border border-[#65e8ff]/30 shadow-inner">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-[11px] text-[#65e8ff] uppercase font-bold flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#65e8ff] animate-ping" />
-                  Instant Super Admin
-                </span>
-                <span className="text-[10px] font-mono text-[#a6b1c5]">Pre-Authenticated Session</span>
-              </div>
-              <p className="text-[12px] text-[#a6b1c5] mb-3 leading-relaxed">
-                Log into Navioraa Operations OS directly as Super Admin (Alex Mercer / naviora.pvt@gmail.com) with full Firestore write privileges.
-              </p>
-              <button
-                onClick={handleDemoAdmin}
-                disabled={isSubmitting}
-                className="w-full py-2.5 rounded-lg bg-gradient-to-r from-[#658aff] to-[#2ad9f2] text-[#090e1c] font-bold text-[13px] shadow-[0_0_14px_rgba(101,232,255,0.4)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-[18px]">verified_user</span>
-                <span>Enter Operations OS Console</span>
-              </button>
-            </div>
-
-            <div className="relative flex py-2 items-center mb-6">
-              <div className="flex-grow border-t border-[#252a39]" />
-              <span className="flex-shrink mx-4 font-mono text-[11px] text-[#8d90a0] uppercase">
-                Or Authenticate Via
-              </span>
-              <div className="flex-grow border-t border-[#252a39]" />
-            </div>
-
-            {/* Google Authentication Button */}
             <button
               onClick={handleGoogleLogin}
               disabled={isSubmitting}
-              className="w-full mb-4 py-2.5 px-4 rounded-lg bg-[#161b2a] hover:bg-[#252a39] border border-[#434655]/40 text-[#dee2f6] text-[13px] font-semibold flex items-center justify-center gap-3 transition-colors cursor-pointer disabled:opacity-50"
+              className="w-full py-3 px-4 rounded-lg bg-[#161b2a] hover:bg-[#252a39] border border-[#434655]/40 text-[#dee2f6] text-[14px] font-semibold flex items-center justify-center gap-3 transition-colors cursor-pointer disabled:opacity-50"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -212,64 +123,47 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ navigate }) => {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                 />
               </svg>
-              <span>Sign in with Google</span>
+              <span>{isSubmitting ? 'Checking access...' : 'Continue with Google'}</span>
             </button>
-
-            {/* Standard Email/Password Form */}
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="font-mono text-[11px] text-[#dee2f6] uppercase">Admin Email</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="alex.mercer@navioraa.internal"
-                  className="w-full px-4 py-2.5 rounded-lg bg-[#090e1c] border border-[#252a39] text-[#dee2f6] text-[14px] focus:outline-none focus:border-[#65e8ff]"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="font-mono text-[11px] text-[#dee2f6] uppercase">Password</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowForgot(true)}
-                    className="text-[11px] font-mono text-[#65e8ff] hover:underline"
-                  >
-                    Forgot Key?
-                  </button>
-                </div>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="w-full px-4 py-2.5 pr-10 rounded-lg bg-[#090e1c] border border-[#252a39] text-[#dee2f6] text-[14px] focus:outline-none focus:border-[#65e8ff]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a6b1c5] hover:text-[#dee2f6]"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {showPassword ? 'visibility_off' : 'visibility'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-2.5 rounded-lg bg-[#252a39] hover:bg-[#343949] text-[#dee2f6] font-semibold text-[13px] transition-colors cursor-pointer border border-[#434655]/40"
-              >
-                {isSubmitting ? 'Verifying Credentials...' : 'Authenticate'}
-              </button>
-            </form>
+            <p className="mt-4 text-center text-[12px] text-[#a6b1c5]">
+              Continue with <strong className="text-[#dee2f6]">naviora.pvt@gmail.com</strong> only.
+            </p>
           </>
+        ) : (
+          <form onSubmit={handleTeamLogin} className="space-y-3">
+            <label className="block text-[12px] text-[#a6b1c5]">
+              Username / email
+              <input
+                type="email"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={event => setEmail(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-[#434655]/40 bg-[#090e1c] px-3 py-2.5 text-[14px] text-[#dee2f6] outline-none focus:border-[#65e8ff]"
+                placeholder="team.member@example.com"
+              />
+            </label>
+            <label className="block text-[12px] text-[#a6b1c5]">
+              Password
+              <input
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={event => setPassword(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-[#434655]/40 bg-[#090e1c] px-3 py-2.5 text-[14px] text-[#dee2f6] outline-none focus:border-[#65e8ff]"
+                placeholder="Your assigned password"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full rounded-lg bg-[#65e8ff] px-4 py-3 text-[14px] font-semibold text-[#090e1c] transition-colors hover:bg-[#9af0ff] disabled:opacity-50"
+            >
+              {isSubmitting ? 'Signing in...' : 'Sign in to admin panel'}
+            </button>
+            <p className="text-center text-[11px] text-[#a6b1c5]">Team access is created by the primary admin.</p>
+          </form>
         )}
 
         <div className="mt-6 pt-4 border-t border-[#252a39] text-center">

@@ -4,33 +4,52 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut,
-  sendPasswordResetEmail
+  getIdTokenResult,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../firebase';
+import { auth, googleProvider } from '../firebase';
+
+const OWNER_EMAIL = 'naviora.pvt@gmail.com';
 
 interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
-  loginWithEmail: (email: string, pass: string) => Promise<void>;
-  demoAdminLogin: () => Promise<void>;
+  loginWithPassword: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
   authError: string | null;
   clearAuthError: () => void;
 }
 
-const ADMIN_EMAILS = [
-  'naviora.pvt@gmail.com',
-  'alex.mercer@navioraa.internal',
-  'admin@navioraa.com'
-];
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function getLoginErrorMessage(error: unknown): string {
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String(error.code)
+    : '';
+  if (code.endsWith('/unauthorized-domain')) {
+    return 'This website address is not authorized for Firebase sign-in. Add localhost or your live domain in Firebase Authentication settings.';
+  }
+  if (code.endsWith('/popup-blocked')) return 'Your browser blocked the Google sign-in window. Allow popups and try again.';
+  if (code.endsWith('/popup-closed-by-user')) return 'Google sign-in was closed before it finished.';
+  if (code.endsWith('/operation-not-allowed')) return 'Google sign-in is disabled. Enable Google in Firebase Authentication providers.';
+  if (code.endsWith('/invalid-credential') || code.endsWith('/wrong-password') || code.endsWith('/user-not-found')) {
+    return 'The email or password is incorrect. Check the team credentials and try again.';
+  }
+  if (code.endsWith('/network-request-failed')) return 'Network error while signing in. Check your connection and try again.';
+  if (error instanceof Error && error.message) return error.message;
+  return 'Sign-in failed. Check the account and try again.';
+}
+
+async function hasAdminAccess(user: User): Promise<boolean> {
+  const token = await getIdTokenResult(user, true);
+  const email = user.email?.trim().toLowerCase();
+  const isPrimaryGoogle = email === OWNER_EMAIL &&
+    user.emailVerified &&
+    token.signInProvider === 'google.com';
+  return isPrimaryGoogle || token.claims.admin === true;
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -42,21 +61,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const email = currentUser.email?.toLowerCase();
-        let adminStatus = email ? ADMIN_EMAILS.includes(email) : false;
-
-        if (!adminStatus) {
-          try {
-            const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
-            if (adminDoc.exists()) {
-              adminStatus = true;
-            }
-          } catch (e) {
-            console.warn('Admin check error:', e);
-          }
+        try {
+          setIsAdmin(await hasAdminAccess(currentUser));
+        } catch {
+          setIsAdmin(false);
         }
-
-        setIsAdmin(adminStatus);
       } else {
         setIsAdmin(false);
       }
@@ -70,68 +79,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthError(null);
     try {
       const res = await signInWithPopup(auth, googleProvider);
-      const email = res.user.email?.toLowerCase();
-      if (email && ADMIN_EMAILS.includes(email)) {
-        await setDoc(doc(db, 'admins', res.user.uid), {
-          email: res.user.email,
-          role: 'super_admin',
-          assignedAt: new Date().toISOString()
-        }, { merge: true });
-        setIsAdmin(true);
+      const authorized = await hasAdminAccess(res.user) &&
+        res.user.email?.trim().toLowerCase() === OWNER_EMAIL &&
+        (await getIdTokenResult(res.user)).signInProvider === 'google.com';
+      if (!authorized) {
+        await signOut(auth);
+        throw new Error(`Google admin sign-in is reserved for ${OWNER_EMAIL}. Team members must use their assigned email and password.`);
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Google authentication failed';
-      setAuthError(message);
-      throw err;
+      setUser(res.user);
+      setIsAdmin(true);
+    } catch (error: unknown) {
+      setAuthError(getLoginErrorMessage(error));
+      throw error;
     }
   };
 
-  const loginWithEmail = async (email: string, pass: string) => {
+  const loginWithPassword = async (email: string, password: string) => {
     setAuthError(null);
     try {
-      const res = await signInWithEmailAndPassword(auth, email, pass);
-      const userEmail = res.user.email?.toLowerCase();
-      if (userEmail && ADMIN_EMAILS.includes(userEmail)) {
-        setIsAdmin(true);
+      const credential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      if (!(await hasAdminAccess(credential.user))) {
+        await signOut(auth);
+        throw new Error('This account is not enabled for the admin portal. Ask the primary admin to create your team access.');
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Email authentication failed';
-      setAuthError(message);
-      throw err;
+      setUser(credential.user);
+      setIsAdmin(true);
+    } catch (error: unknown) {
+      setAuthError(getLoginErrorMessage(error));
+      throw error;
     }
-  };
-
-  const demoAdminLogin = async () => {
-    setAuthError(null);
-    const demoEmail = 'alex.mercer@navioraa.internal';
-    const demoPass = 'Navioraa@Master2026!';
-    try {
-      await signInWithEmailAndPassword(auth, demoEmail, demoPass);
-    } catch {
-      try {
-        await createUserWithEmailAndPassword(auth, demoEmail, demoPass);
-        await setDoc(doc(db, 'admins', auth.currentUser?.uid || 'alex-mercer'), {
-          email: demoEmail,
-          role: 'super_admin',
-          assignedAt: new Date().toISOString()
-        }, { merge: true });
-      } catch (createErr) {
-        // If cannot create Firebase user directly due to email domain restrictions,
-        // we authenticate with current credentials or set authenticated demo state
-        console.warn('Demo account sign-in/up note:', createErr);
-      }
-    }
-    setIsAdmin(true);
   };
 
   const logout = async () => {
     await signOut(auth);
     setIsAdmin(false);
-  };
-
-  const resetPassword = async (email: string) => {
-    setAuthError(null);
-    await sendPasswordResetEmail(auth, email);
   };
 
   return (
@@ -141,10 +122,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin,
         loading,
         loginWithGoogle,
-        loginWithEmail,
-        demoAdminLogin,
+        loginWithPassword,
         logout,
-        resetPassword,
         authError,
         clearAuthError: () => setAuthError(null)
       }}

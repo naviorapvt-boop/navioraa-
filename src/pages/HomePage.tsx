@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { type FormEvent, useEffect, useState } from 'react';
 import { useData } from '../context/DataContext';
 
 interface HomePageProps {
@@ -6,651 +6,212 @@ interface HomePageProps {
 }
 
 export const HomePage: React.FC<HomePageProps> = ({ navigate }) => {
-  const { siteSettings, services, courses, projects } = useData();
-  const [terminalCheckAlert, setTerminalCheckAlert] = useState(false);
-  const [selectedTech, setSelectedTech] = useState<string | null>(null);
+  const { siteSettings, services, courses, projects, resources, teamMembers, submitInquiry } = useData();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [projectType, setProjectType] = useState('Business Project');
+  const [message, setMessage] = useState('');
+  const [formState, setFormState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
 
-  // Published filter
-  const publishedServices = services.filter(s => s.status === 'published').slice(0, 6);
-  const publishedCourses = courses.filter(c => c.status === 'published').slice(0, 6);
-  const publishedProjects = projects.filter(p => p.status === 'published').slice(0, 2);
+  const publishedServices = services.filter(service => service.status === 'published').slice(0, 6);
+  const publishedCourses = courses.filter(course => course.status === 'published').slice(0, 5);
+  const publishedProjects = projects.filter(project => project.status === 'published').slice(0, 3);
+  const publishedResources = resources.filter(resource => resource.status === 'published').slice(0, 5);
+  const publishedTeam = teamMembers.filter(member => member.status === 'published').slice(0, 2);
+  const featuredProject = publishedProjects[0];
+  const heroImage = featuredProject?.imageUrl || publishedServices[0]?.imageUrl;
 
-  const techStack = [
-    'Python',
-    'JavaScript',
-    'React 19',
-    'Node.js',
-    'AI / PyTorch',
-    'Cloud & DevOps',
-    'PostgreSQL',
-    'Docker & K8s',
-    'FastAPI'
-  ];
+  useEffect(() => {
+    const revealNodes = document.querySelectorAll<HTMLElement>('.reveal');
+    if (!('IntersectionObserver' in window)) {
+      revealNodes.forEach(node => node.classList.add('is-visible'));
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    revealNodes.forEach(node => observer.observe(node));
+    return () => observer.disconnect();
+  }, [publishedServices.length, publishedCourses.length, publishedProjects.length, publishedResources.length, publishedTeam.length]);
+
+  const handleInquirySubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormState('sending');
+    try {
+      await submitInquiry({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        inquiryType: projectType,
+        subject: `${projectType} inquiry`,
+        message: message.trim(),
+        services: [projectType]
+      });
+      setFormState('success');
+      setName('');
+      setEmail('');
+      setPhone('');
+      setMessage('');
+    } catch {
+      setFormState('error');
+    }
+  };
 
   return (
-    <div className="flex flex-col w-full bg-[#080d1b]">
-      {/* 1. Hero Section with Glows & Interactive Terminal */}
-      <section className="relative w-full overflow-hidden bg-[#090e1c] pt-12 pb-24 border-b border-[#434655]/20">
-        {/* Photonic radial ambient glows */}
-        <div className="absolute top-10 left-1/4 w-[580px] h-[580px] bg-[#658aff]/15 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute top-40 right-10 w-[480px] h-[480px] bg-[#65e8ff]/10 rounded-full blur-[150px] pointer-events-none" />
-
-        <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Typography & Hero Text */}
-            <div className="lg:col-span-6 flex flex-col items-start space-y-6">
-              <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#252a39]/70 backdrop-blur-md border border-[#65e8ff]/30 shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-[#65e8ff] shadow-[0_0_10px_#65e8ff] animate-ping" />
-                <span className="font-['JetBrains_Mono'] text-[11px] text-[#65e8ff] uppercase tracking-widest font-semibold">
-                  {siteSettings.heroBadge || 'LEARN. BUILD. INNOVATE.'}
-                </span>
-              </div>
-
-              <h1 className="font-['Geist'] text-[38px] sm:text-[48px] lg:text-[56px] text-[#dee2f6] tracking-tight leading-[1.08] font-bold">
-                Turn Your Ideas Into <br />
-                <span className="bg-gradient-to-r from-[#658aff] via-[#2ad9f2] to-[#65e8ff] bg-clip-text text-transparent drop-shadow-[0_0_24px_rgba(41,217,242,0.35)]">
-                  Real-World Technology.
-                </span>
+    <div className="editorial-home">
+      <section className="editorial-hero" id="top">
+        <div className="editorial-wrap hero-wrap">
+          <div className="hero-topline reveal">
+            <span>Technology <i /> Training <i /> Digital innovation</span>
+            <span className="availability"><b /> Available for new projects</span>
+          </div>
+          <div className="hero-layout">
+            <div className="hero-copy">
+              <p className="eyebrow reveal">Independent minds. Useful technology.</p>
+              <h1 className="hero-title">
+                <span className="hero-line reveal">Ideas into</span>
+                <span className="hero-line hero-line-indent reveal">things that</span>
+                <span className="hero-line hero-line-accent reveal">move us forward.</span>
               </h1>
-
-              <p className="text-[17px] sm:text-[18px] text-[#a6b1c5] max-w-xl leading-relaxed">
-                {siteSettings.heroDescription ||
-                  'Learn in-demand IT skills, build practical enterprise-grade projects, and explore innovative cloud & AI technology solutions with Navioraa.'}
-              </p>
-
-              {/* Action Cluster */}
-              <div className="flex flex-wrap items-center gap-4 pt-2 w-full">
-                <button
-                  onClick={() => navigate('/courses')}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg bg-gradient-to-r from-[#658aff] to-[#2ad9f2] text-[#090e1c] font-semibold text-[14px] shadow-[0_0_20px_rgba(41,217,242,0.4)] hover:shadow-[0_0_30px_rgba(41,217,242,0.65)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
-                >
-                  <span>Explore IT Training</span>
-                  <span className="material-symbols-outlined text-[19px]">arrow_forward</span>
-                </button>
-
-                <button
-                  onClick={() => navigate('/projects')}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg bg-[#252a39]/80 hover:bg-[#2f3444] text-[#dee2f6] font-semibold text-[14px] backdrop-blur-md border border-[#434655]/40 hover:scale-[1.02] transition-all cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[#65e8ff] text-[19px]">code</span>
-                  <span>Explore Our Projects</span>
-                </button>
-
-                <a
-                  href={`https://wa.me/${siteSettings.whatsappNumber?.replace(/[^0-9]/g, '') || '15550199283'}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-3.5 rounded-lg bg-[#252a39]/40 hover:bg-[#252a39] text-[#a6b1c5] hover:text-[#65e8ff] text-[13px] font-mono transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[18px] text-[#25d366]">chat</span>
-                  <span>Quick WhatsApp Sync</span>
-                </a>
-              </div>
-
-              {/* Micro Credential Strip */}
-              <div className="pt-4 flex items-center gap-3 text-[#a6b1c5]/80 font-['JetBrains_Mono'] text-[12px]">
-                <span className="text-[#65e8ff] font-bold">•</span>
-                <span>Practical Learning</span>
-                <span className="text-[#65e8ff] font-bold">•</span>
-                <span>Real-World Projects</span>
-                <span className="text-[#65e8ff] font-bold">•</span>
-                <span>Future-Ready Skills</span>
+              <div className="hero-bottom reveal">
+                <p>{siteSettings.heroDescription || 'Navioraa helps students, startups and businesses learn technology, build practical projects and turn ideas into digital products.'}</p>
+                <div className="hero-actions">
+                  <a className="button button-dark" href="#work">Explore Navioraa <span aria-hidden="true">↗</span></a>
+                  <button className="button button-text" onClick={() => navigate('/contact')}>Start a project <span aria-hidden="true">↗</span></button>
+                </div>
               </div>
             </div>
-
-            {/* Right Column: High-Tech Cyber Terminal & Engine Telemetry */}
-            <div className="lg:col-span-6 relative">
-              <div className="absolute -inset-1.5 bg-gradient-to-tr from-[#658aff]/20 to-[#65e8ff]/30 rounded-xl blur-xl opacity-70" />
-              <div className="relative rounded-xl bg-[#090e1c]/90 backdrop-blur-xl border border-[#434655]/40 shadow-2xl overflow-hidden">
-                {/* Terminal Header */}
-                <div className="px-5 py-3.5 bg-[#161b2a] flex items-center justify-between border-b border-[#252a39]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-[#ffb4ab]/80" />
-                    <span className="w-3 h-3 rounded-full bg-[#00cee7]/80" />
-                    <span className="w-3 h-3 rounded-full bg-[#65e8ff]/80" />
-                    <span className="ml-3 font-mono text-[12px] text-[#a6b1c5]">
-                      navioraa_runtime_v4.py
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#252a39] font-mono text-[11px] text-[#65e8ff]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#65e8ff] animate-pulse" />
-                      <span>0ms Latency</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Terminal Code Body */}
-                <div className="p-6 font-['JetBrains_Mono'] text-[13px] space-y-3 leading-relaxed">
-                  <div className="text-[#a6b1c5]/50"># Initializing Navioraa Enterprise Full-Stack Core</div>
-                  <div>
-                    <span className="text-[#2ad9f2]">from</span> <span className="text-[#dee2f6]">navioraa.ai</span>{' '}
-                    <span className="text-[#2ad9f2]">import</span>{' '}
-                    <span className="text-[#b5c4ff] font-semibold">AutonomousAgentPool</span>,{' '}
-                    <span className="text-[#b5c4ff] font-semibold">CloudCluster</span>
-                  </div>
-                  <div>
-                    <span className="text-[#2ad9f2]">class</span>{' '}
-                    <span className="text-[#65e8ff] font-bold">ProductionAccelerator</span>:
-                  </div>
-                  <div className="pl-4 text-[#a6b1c5]">
-                    <span>def __init__(self, tenancy="global_multicloud"):</span>
-                  </div>
-                  <div className="pl-8 text-[#dee2f6]">
-                    <span>self.mesh = CloudCluster(protocol="gRPC", secure=True)</span>
-                    <br />
-                    <span>self.agent = AutonomousAgentPool(llm="navioraa-ultra-v1")</span>
-                  </div>
-                  <div className="pl-4 text-[#a6b1c5]">
-                    <span>async def execute_pipeline(self, payload: dict):</span>
-                  </div>
-                  <div className="pl-8 text-[#65e8ff]">
-                    <span>return await self.agent.synthesize_and_deploy(payload)</span>
-                  </div>
-
-                  {/* Console Log Trace */}
-                  <div className="pt-4 border-t border-[#252a39] flex flex-col gap-1 text-[12px]">
-                    <div className="text-[#2ad9f2] flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                      <span>[STATUS]: Production-Ready Runtime Initialized</span>
-                    </div>
-                    <div className="text-[#b5c4ff] flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[14px]">bolt</span>
-                      <span>[STORE]: Cloud Firestore v2 Active & Replicating (Multi-Region)</span>
-                    </div>
-                    <div className="text-[#a6b1c5]/70 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[14px]">terminal</span>
-                      <span>[ENV]: Docker Swarm + Next.js Edge SSR Pipeline Nominal</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Terminal Quick Controls */}
-                <div className="px-5 py-3 bg-[#161b2a] flex items-center justify-between text-[11px] font-mono text-[#a6b1c5] border-t border-[#252a39]">
-                  <span className="flex items-center gap-1.5 text-[#65e8ff]">
-                    <span className="w-2 h-2 rounded-full bg-[#65e8ff]" />
-                    <span>SYSTEM HEALTH 100%</span>
-                  </span>
-                  <button
-                    onClick={() => setTerminalCheckAlert(!terminalCheckAlert)}
-                    className="hover:text-[#65e8ff] flex items-center gap-1 text-[#dee2f6] transition-colors cursor-pointer"
-                  >
-                    <span>[RE-RUN HEALTH_CHECK]</span>
-                    <span className="material-symbols-outlined text-[14px]">play_arrow</span>
-                  </button>
-                </div>
+            <div className="hero-art reveal" aria-label="Featured Navioraa project">
+              <div className="art-grid" />
+              {heroImage && <img src={heroImage} alt={featuredProject?.title || publishedServices[0]?.title || 'Navioraa digital project'} loading="eager" onError={event => { event.currentTarget.style.display = 'none'; }} />}
+              <div className="art-tint" />
+              <span className="art-index">N° 01 <span>—</span> DIGITAL PRACTICE</span>
+              <div className="art-caption">
+                <span>{featuredProject?.category || 'Learning through making'}</span>
+                <strong>{featuredProject?.title || 'Build what comes next.'}</strong>
               </div>
-
-              {/* Dynamic Output Toast */}
-              {terminalCheckAlert && (
-                <div className="absolute -bottom-6 -right-4 bg-[#252a39] border border-[#65e8ff]/40 px-4 py-2.5 rounded-lg shadow-2xl backdrop-blur-xl flex items-center gap-3 z-20 animate-in fade-in">
-                  <span className="material-symbols-outlined text-[#65e8ff] text-[18px]">verified</span>
-                  <span className="font-mono text-[12px] text-[#dee2f6]">
-                    Execution verified: 0 critical vulnerabilities. Real-time Firestore sync active.
-                  </span>
-                </div>
-              )}
+              <span className="art-mark" aria-hidden="true">N</span>
             </div>
+          </div>
+          <div className="hero-foot reveal"><span>Scroll to explore</span><span className="scroll-rule" /><span>01 / 06</span></div>
+        </div>
+      </section>
+
+      <section className="intro-section editorial-wrap reveal" id="about">
+        <p className="section-index">01 / ABOUT NAVIORAA</p>
+        <div className="intro-content">
+          <h2>Technology should not just be learned.<br /><em>It should be used to build.</em></h2>
+          <div className="intro-aside">
+            <p>Navioraa brings practical IT training and digital project work together. We help curious learners gain confidence, and help ambitious teams turn good ideas into useful products.</p>
+            <button className="underlined-link" onClick={() => navigate('/about')}>Our point of view <span>↗</span></button>
           </div>
         </div>
       </section>
 
-      {/* 2. Technology Matrix Bar */}
-      <section className="w-full bg-[#161b2a] py-6 border-b border-[#252a39]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2 text-[#a6b1c5] font-semibold text-[13px] font-mono tracking-wider whitespace-nowrap">
-            <span className="material-symbols-outlined text-[#65e8ff] text-[20px]">layers</span>
-            <span>PRODUCTION TECH STACK</span>
+      <section className="services-section" id="services">
+        <div className="editorial-wrap">
+          <div className="section-heading reveal"><p className="section-index">02 / WHAT WE DO</p><h2>Good work starts<br /><em>with a useful question.</em></h2><p className="heading-note">From first lesson to finished product, we make technology more practical.</p></div>
+          <div className="service-list">
+            {publishedServices.map((service, index) => (
+              <details className="service-row reveal" key={service.id}>
+                <summary><span className="row-number">{String(index + 1).padStart(2, '0')}</span><span className="row-title">{service.title}</span><span className="row-arrow" aria-hidden="true">↗</span></summary>
+                <div className="service-detail"><p>{service.shortDescription}</p><button className="underlined-link" onClick={() => navigate('/services')}>Explore this service <span>↗</span></button></div>
+              </details>
+            ))}
+            {!publishedServices.length && <p className="empty-note">New services are on the way.</p>}
           </div>
+          <button className="underlined-link section-link" onClick={() => navigate('/services')}>All services <span>↗</span></button>
+        </div>
+      </section>
 
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {techStack.map((tech) => (
-              <button
-                key={tech}
-                onClick={() => setSelectedTech(selectedTech === tech ? null : tech)}
-                className={`px-3.5 py-1.5 rounded-lg font-mono text-[12px] transition-all cursor-pointer border ${
-                  selectedTech === tech
-                    ? 'bg-[#65e8ff] text-[#090e1c] font-bold border-[#65e8ff]'
-                    : 'bg-[#1a1f2e] text-[#dee2f6] hover:text-[#65e8ff] hover:bg-[#252a39] border-[#434655]/30'
-                }`}
-              >
-                {tech}
+      <section className="learning-section" id="training">
+        <div className="editorial-wrap learning-layout">
+          <div className="learning-copy reveal"><p className="section-index">03 / LEARN</p><h2>Learn technology<br /><em>by building with it.</em></h2><p>Practical IT training for students and aspiring makers. Build a foundation, work through real challenges, and finish with projects you can show.</p><button className="button button-outline" onClick={() => navigate('/courses')}>Explore training <span>↗</span></button></div>
+          <div className="learning-list">
+            {publishedCourses.map((course, index) => (
+              <button className="learning-row reveal" key={course.id} onClick={() => navigate('/courses')}>
+                <span>{String(index + 1).padStart(2, '0')}</span><strong>{course.title}</strong><small>{course.duration}</small><span className="row-arrow" aria-hidden="true">↗</span>
               </button>
             ))}
+            {!publishedCourses.length && ['Python & Programming', 'AI & Machine Learning', 'Web Development', 'Project Development'].map((label, index) => <div className="learning-row" key={label}><span>{String(index + 1).padStart(2, '0')}</span><strong>{label}</strong><small>Explore path</small></div>)}
           </div>
         </div>
       </section>
 
-      {/* 3. Engineered IT Services & Solutions Grid */}
-      <section className="w-full py-28 relative">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-2 h-2 rounded-full bg-[#65e8ff]" />
-                <span className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-wider font-semibold">
-                  Enterprise Capacities
-                </span>
-              </div>
-              <h2 className="font-['Geist'] text-[32px] sm:text-[40px] text-[#dee2f6] font-bold">
-                Engineered IT Services & Solutions
-              </h2>
-            </div>
-            <p className="text-[15px] text-[#a6b1c5] max-w-md leading-relaxed">
-              Bridging enterprise-grade software architecture, artificial intelligence implementation, and high-velocity skills training.
-            </p>
-          </div>
+      <section className="projects-section editorial-wrap" id="work">
+        <div className="projects-head reveal"><div><p className="section-index">04 / SELECTED WORK</p><h2>Make it real.</h2></div><button className="underlined-link" onClick={() => navigate('/projects')}>All projects <span>↗</span></button></div>
+        <div className="project-showcase">
+          {publishedProjects.map((project, index) => (
+            <article className={`project-feature project-feature-${index % 2 ? 'reverse' : 'forward'} reveal`} key={project.id}>
+              <button className="project-image" onClick={() => navigate('/projects')} aria-label={`View ${project.title}`}>
+                {project.imageUrl && <img src={project.imageUrl} alt={project.title} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} />}
+                <span className="image-index">0{index + 1} / 0{publishedProjects.length}</span><span className="image-open">View project ↗</span>
+              </button>
+              <div className="project-copy"><p className="section-index">{project.category || 'Digital project'}</p><h3>{project.title}</h3><p>{project.description}</p><button className="underlined-link" onClick={() => navigate('/projects')}>Project details <span>↗</span></button></div>
+            </article>
+          ))}
+          {!publishedProjects.length && <div className="project-empty reveal"><span>Selected work</span><h3>Useful ideas,<br />made tangible.</h3><button className="underlined-link" onClick={() => navigate('/contact')}>Discuss a project <span>↗</span></button></div>}
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {publishedServices.map((service, index) => (
-              <div
-                key={service.id}
-                className="group relative rounded-xl bg-[#10182b] p-8 border border-[#434655]/20 hover:border-[#65e8ff]/40 shadow-sm hover:shadow-xl hover:bg-[#161b2a] transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="w-12 h-12 rounded-lg bg-[#252a39] flex items-center justify-center mb-6 group-hover:bg-[#658aff] transition-colors border border-[#434655]/30">
-                    <span className="material-symbols-outlined text-[#65e8ff] group-hover:text-[#090e1c] text-[26px]">
-                      {index === 0
-                        ? 'terminal'
-                        : index === 1
-                        ? 'web'
-                        : index === 2
-                        ? 'devices'
-                        : index === 3
-                        ? 'neurology'
-                        : index === 4
-                        ? 'hub'
-                        : 'school'}
-                    </span>
-                  </div>
-                  <h3 className="font-['Geist'] text-[20px] text-[#dee2f6] font-bold mb-3 group-hover:text-[#65e8ff] transition-colors">
-                    {service.title}
-                  </h3>
-                  <p className="text-[14px] text-[#a6b1c5] mb-6 leading-relaxed">
-                    {service.shortDescription}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-8">
-                    {service.technologies?.slice(0, 3).map((t) => (
-                      <span
-                        key={t}
-                        className="px-2.5 py-1 rounded bg-[#1a1f2e] text-[#c3c5d7] font-mono text-[11px] border border-[#252a39]"
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => navigate('/services')}
-                  className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#65e8ff] hover:text-[#b5c4ff] transition-colors cursor-pointer text-left"
-                >
-                  <span>View Architecture Scope</span>
-                  <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">
-                    arrow_forward
-                  </span>
-                </button>
-              </div>
+      <section className="resources-section" id="resources">
+        <div className="editorial-wrap resources-layout">
+          <div className="resources-intro reveal"><p className="section-index">05 / KEEP LEARNING</p><h2>Resources for<br /><em>the curious.</em></h2><p>Notes and materials for your next step, whether you are starting out or going deeper.</p><button className="underlined-link" onClick={() => navigate('/resources')}>Explore resources <span>↗</span></button></div>
+          <div className="resource-list">
+            {publishedResources.map((resource, index) => (
+              <button className="resource-row reveal" key={resource.id} onClick={() => navigate('/resources')}><span>{String(index + 1).padStart(2, '0')}</span><strong>{resource.title}</strong><small>{resource.category || resource.fileType}</small><span className="row-arrow" aria-hidden="true">↗</span></button>
             ))}
+            {!publishedResources.length && ['Programming notes', 'AI learning materials', 'Web development guides', 'Project resources'].map((label, index) => <button className="resource-row" key={label} onClick={() => navigate('/resources')}><span>{String(index + 1).padStart(2, '0')}</span><strong>{label}</strong><small>Learning material</small><span className="row-arrow" aria-hidden="true">↗</span></button>)}
           </div>
         </div>
       </section>
 
-      {/* 4. Flagship Production Training Tracks (Courses) */}
-      <section className="w-full bg-[#090e1c] py-28 relative border-y border-[#434655]/20">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-2 h-2 rounded-full bg-[#65e8ff]" />
-                <span className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-wider font-semibold">
-                  Engineering Academy
-                </span>
-              </div>
-              <h2 className="font-['Geist'] text-[32px] sm:text-[40px] text-[#dee2f6] font-bold">
-                Flagship Production Training Tracks
-              </h2>
-            </div>
-            <button
-              onClick={() => navigate('/courses')}
-              className="inline-flex items-center gap-2 font-mono text-[13px] text-[#65e8ff] hover:text-[#b5c4ff] transition-colors cursor-pointer"
-            >
-              <span>Explore All Tracks →</span>
-            </button>
-          </div>
+      <section className="manifesto-section">
+        <div className="editorial-wrap manifesto-layout">
+          <p className="section-index reveal">06 / WHY NAVIORAA</p>
+          <div className="manifesto-words" aria-label="Learn. Build. Create. Grow."><span className="reveal">LEARN.</span><span className="reveal">BUILD.</span><span className="reveal">CREATE.</span><span className="reveal">GROW.</span></div>
+          <p className="manifesto-note reveal">We combine technology training with practical project development, so knowledge does not stop at the screen. You learn by making something that matters.</p>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {publishedCourses.map((course) => (
-              <div
-                key={course.id}
-                className="rounded-xl bg-[#10182b] p-6 border border-[#434655]/20 hover:border-[#65e8ff]/40 shadow-md hover:shadow-2xl transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-4">
-                    <span className="px-2.5 py-1 rounded bg-[#65e8ff]/10 text-[#65e8ff] font-mono text-[11px] uppercase font-bold border border-[#65e8ff]/20">
-                      {course.difficulty || 'Advanced'}
-                    </span>
-                    <span className="font-mono text-[12px] text-[#a6b1c5] flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[15px]">schedule</span>
-                      {course.duration} ({course.hours || '80h'})
-                    </span>
-                  </div>
+      <section className="process-section editorial-wrap">
+        <div className="process-heading reveal"><p className="section-index">A GOOD WAY FORWARD</p><h2>How we work</h2></div>
+        <div className="process-list">
+          {[['01', 'Discover', 'Start with your goals, context and the people who will use the result.'], ['02', 'Plan', 'Turn the big idea into a clear, manageable path.'], ['03', 'Build', 'Learn, design and develop through practical work.'], ['04', 'Test', 'Refine the details and make sure it works for real people.'], ['05', 'Launch', 'Share the result and keep improving from there.']].map(([number, title, description]) => (
+            <details className="process-step reveal" key={number}><summary><span>{number}</span><strong>{title}</strong><i aria-hidden="true">+</i></summary><p>{description}</p></details>
+          ))}
+        </div>
+      </section>
 
-                  <h3 className="font-['Geist'] text-[19px] text-[#dee2f6] font-bold mb-2">
-                    {course.title}
-                  </h3>
-                  <p className="text-[13px] text-[#a6b1c5] mb-4 line-clamp-2">
-                    {course.shortDescription}
-                  </p>
-
-                  <div className="flex flex-wrap gap-1.5 mb-6">
-                    {course.technologies?.slice(0, 4).map((tech) => (
-                      <span
-                        key={tech}
-                        className="px-2 py-0.5 rounded bg-[#1a1f2e] text-[#c3c5d7] font-mono text-[11px]"
-                      >
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Curriculum Preview Milestone snippet */}
-                  <div className="p-3 rounded-lg bg-[#090e1c] mb-6 text-[#a6b1c5] font-mono text-[11px] space-y-1 border border-[#252a39]">
-                    <div className="text-[#65e8ff] font-semibold">Curriculum Milestone:</div>
-                    <div>• {course.curriculum?.[0]?.module || 'Core Foundations & Distributed Patterns'}</div>
-                    <div>• {course.curriculum?.[1]?.module || 'High-Concurrency Capstone Deployment'}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-4 pt-4 border-t border-[#252a39]">
-                  <span className="font-['Geist'] text-[20px] text-[#dee2f6] font-bold">
-                    {course.price || '$980'}{' '}
-                    <span className="text-[12px] text-[#a6b1c5] font-normal">/ Cohort</span>
-                  </span>
-                  <button
-                    onClick={() => navigate('/courses')}
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#658aff] to-[#2ad9f2] text-[#090e1c] font-bold text-[13px] shadow-sm hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-                  >
-                    Enroll Now
-                  </button>
-                </div>
-              </div>
+      <section className="team-section" id="team">
+        <div className="editorial-wrap">
+          <div className="team-heading reveal"><div><p className="section-index">PEOPLE MAKE THE WORK</p><h2>Meet the people<br /><em>behind Navioraa.</em></h2></div><button className="underlined-link" onClick={() => navigate('/team')}>The wider team <span>↗</span></button></div>
+          <div className="team-list">
+            {publishedTeam.map((member, index) => (
+              <article className="team-profile reveal" key={member.id}><div className="team-photo">{member.photoUrl ? <img src={member.photoUrl} alt={member.name} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} /> : <span className="team-initials" aria-label={`${member.name} portrait not added`}>{member.name.split(' ').map(part => part[0]).join('').slice(0, 2)}</span>}<span>0{index + 1}</span></div><div className="team-info"><p className="section-index">{member.role}</p><h3>{member.name}</h3><p>{member.bio}</p></div></article>
             ))}
+            {!publishedTeam.length && <p className="empty-note">Our team profiles will be here soon.</p>}
           </div>
         </div>
       </section>
 
-      {/* 5. Flagship Engineering Systems (Projects Showcase) */}
-      <section className="w-full py-28 relative">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-2 h-2 rounded-full bg-[#65e8ff]" />
-                <span className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-wider font-semibold">
-                  Proof of Work
-                </span>
-              </div>
-              <h2 className="font-['Geist'] text-[32px] sm:text-[40px] text-[#dee2f6] font-bold">
-                Flagship Engineering Systems
-              </h2>
-            </div>
-            <p className="text-[15px] text-[#a6b1c5] max-w-md">
-              Production software engineered by Navioraa architects and senior students, powering live workloads at scale.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {publishedProjects.map((proj) => (
-              <div
-                key={proj.id}
-                className="rounded-xl bg-[#10182b] overflow-hidden border border-[#434655]/20 shadow-lg flex flex-col justify-between group hover:border-[#65e8ff]/40 transition-all"
-              >
-                <div className="relative h-64 w-full overflow-hidden bg-[#161b2a]">
-                  <img
-                    src={proj.imageUrl}
-                    alt={proj.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#10182b] via-[#10182b]/40 to-transparent" />
-                  <div className="absolute top-4 left-4 inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#090e1c]/80 backdrop-blur-md border border-[#434655]/30">
-                    <span className="w-2 h-2 rounded-full bg-[#65e8ff] animate-pulse" />
-                    <span className="font-mono text-[11px] text-[#65e8ff] uppercase font-bold">
-                      {proj.badge || 'Production Deployment'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-8 flex flex-col flex-1 justify-between">
-                  <div>
-                    <h3 className="font-['Geist'] text-[22px] text-[#dee2f6] font-bold mb-3">
-                      {proj.title}
-                    </h3>
-                    <p className="text-[14px] text-[#a6b1c5] mb-6 leading-relaxed">
-                      {proj.description}
-                    </p>
-                    <div className="flex flex-wrap gap-2 mb-8">
-                      {proj.technologies?.map((tech) => (
-                        <span
-                          key={tech}
-                          className="px-3 py-1 rounded bg-[#1a1f2e] text-[#65e8ff] font-mono text-[12px] border border-[#252a39]"
-                        >
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4 border-t border-[#252a39]">
-                    <button
-                      onClick={() => navigate('/projects')}
-                      className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#65e8ff] hover:text-[#b5c4ff] transition-colors cursor-pointer"
-                    >
-                      <span>View Architecture Blueprint</span>
-                      <span className="material-symbols-outlined text-[18px]">account_tree</span>
-                    </button>
-                    <button
-                      onClick={() => navigate('/projects')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#252a39] hover:bg-[#2f3444] text-[#dee2f6] text-[13px] font-semibold transition-colors cursor-pointer"
-                    >
-                      <span>Live Demo</span>
-                      <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Why Tech Teams & Builders Choose Us (4-Column Bento Grid) */}
-      <section className="w-full bg-[#090e1c] py-28 relative border-t border-[#434655]/20">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <div className="inline-flex items-center gap-2 mb-3">
-              <span className="w-2 h-2 rounded-full bg-[#65e8ff]" />
-              <span className="font-mono text-[11px] text-[#65e8ff] uppercase tracking-wider font-semibold">
-                The Navioraa Edge
-              </span>
-            </div>
-            <h2 className="font-['Geist'] text-[32px] sm:text-[40px] text-[#dee2f6] font-bold mb-4">
-              Why Tech Teams & Builders Choose Us
-            </h2>
-            <p className="text-[15px] text-[#a6b1c5]">
-              We reject rote memorization and toy tutorials. Everything at Navioraa is engineered to mirror the intensity and craftsmanship of tier-1 engineering companies.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="rounded-xl bg-[#10182b] p-6 border border-[#434655]/20 flex flex-col justify-between hover:bg-[#161b2a] transition-all">
-              <div>
-                <div className="w-10 h-10 rounded-lg bg-[#252a39] flex items-center justify-center text-[#65e8ff] mb-4">
-                  <span className="material-symbols-outlined text-[24px]">model_training</span>
-                </div>
-                <h4 className="font-['Geist'] text-[18px] text-[#dee2f6] font-bold mb-2">Practical Learning</h4>
-                <p className="text-[13px] text-[#a6b1c5] leading-relaxed">
-                  Every concept is coupled with immediate production code execution. No passive slide decks; pure muscle memory.
-                </p>
-              </div>
-              <div className="pt-6 font-mono text-[12px] text-[#65e8ff] font-semibold">100% Code-First</div>
-            </div>
-
-            <div className="rounded-xl bg-[#10182b] p-6 border border-[#434655]/20 flex flex-col justify-between hover:bg-[#161b2a] transition-all">
-              <div>
-                <div className="w-10 h-10 rounded-lg bg-[#252a39] flex items-center justify-center text-[#65e8ff] mb-4">
-                  <span className="material-symbols-outlined text-[24px]">integration_instructions</span>
-                </div>
-                <h4 className="font-['Geist'] text-[18px] text-[#dee2f6] font-bold mb-2">Hands-on Project Building</h4>
-                <p className="text-[13px] text-[#a6b1c5] leading-relaxed">
-                  Architect and ship genuine multi-tier cloud software with full test suites, automated documentation, and CI/CD pipelines.
-                </p>
-              </div>
-              <div className="pt-6 font-mono text-[12px] text-[#65e8ff] font-semibold">Real GitHub Repos</div>
-            </div>
-
-            <div className="rounded-xl bg-[#10182b] p-6 border border-[#434655]/20 flex flex-col justify-between hover:bg-[#161b2a] transition-all">
-              <div>
-                <div className="w-10 h-10 rounded-lg bg-[#252a39] flex items-center justify-center text-[#65e8ff] mb-4">
-                  <span className="material-symbols-outlined text-[24px]">terminal</span>
-                </div>
-                <h4 className="font-['Geist'] text-[18px] text-[#dee2f6] font-bold mb-2">Modern Tech Stack</h4>
-                <p className="text-[13px] text-[#a6b1c5] leading-relaxed">
-                  Work strictly with today's standard: Docker containers, PyTorch LLMs, Next.js 19, TypeScript, and Kafka event buses.
-                </p>
-              </div>
-              <div className="pt-6 font-mono text-[12px] text-[#65e8ff] font-semibold">Zero Legacy Bloat</div>
-            </div>
-
-            <div className="rounded-xl bg-[#10182b] p-6 border border-[#434655]/20 flex flex-col justify-between hover:bg-[#161b2a] transition-all">
-              <div>
-                <div className="w-10 h-10 rounded-lg bg-[#252a39] flex items-center justify-center text-[#65e8ff] mb-4">
-                  <span className="material-symbols-outlined text-[24px]">psychology</span>
-                </div>
-                <h4 className="font-['Geist'] text-[18px] text-[#dee2f6] font-bold mb-2">Future-Ready Problem Solving</h4>
-                <p className="text-[13px] text-[#a6b1c5] leading-relaxed">
-                  Develop systematic problem deconstruction, algorithmic reasoning, and the ability to adapt to next decade's paradigms.
-                </p>
-              </div>
-              <div className="pt-6 font-mono text-[12px] text-[#65e8ff] font-semibold">First-Principles Logic</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. Founder & Leadership Spotlight */}
-      <section className="w-full py-28 relative">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="rounded-2xl bg-[#10182b] p-8 lg:p-12 border border-[#434655]/30 shadow-2xl relative overflow-hidden">
-            <div className="absolute -right-20 -bottom-20 w-96 h-96 bg-[#658aff]/10 rounded-full blur-[100px] pointer-events-none" />
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-4 flex justify-center">
-                <div className="relative w-64 h-64 lg:w-72 lg:h-72 rounded-2xl overflow-hidden shadow-2xl bg-[#161b2a] border border-[#65e8ff]/30">
-                  <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80"
-                    alt="Abhishek Sharma"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#090e1c]/90 via-transparent to-transparent" />
-                  <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                    <span className="font-mono text-[11px] text-[#65e8ff] uppercase bg-[#090e1c]/90 px-2.5 py-1 rounded">
-                      Lead Systems Architect
-                    </span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#65e8ff]" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:col-span-8 flex flex-col justify-center space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <h3 className="font-['Geist'] text-[24px] text-[#dee2f6] font-bold">
-                      Abhishek Sharma
-                    </h3>
-                    <p className="text-[14px] text-[#65e8ff] font-medium">
-                      Founder & Lead Systems Architect • Navioraa Technologies
-                    </p>
-                  </div>
-
-                  <a
-                    href="https://linkedin.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#252a39] hover:bg-[#2f3444] text-[#dee2f6] text-[13px] font-semibold transition-colors border border-[#434655]/30 shadow-sm"
-                  >
-                    <span className="material-symbols-outlined text-[#65e8ff] text-[18px]">verified</span>
-                    <span>Verified LinkedIn</span>
-                    <span className="material-symbols-outlined text-[16px] text-[#a6b1c5]">arrow_outward</span>
-                  </a>
-                </div>
-
-                <blockquote className="text-[17px] text-[#dee2f6]/90 italic border-l-2 border-[#65e8ff] pl-5 py-1 leading-relaxed">
-                  “Software engineering is no longer about writing repetitive boilerplate. It is about understanding distributed systems, wielding neural models as extensions of thought, and building reliable architectures that outlive the hype cycles.”
-                </blockquote>
-
-                <div className="grid grid-cols-3 gap-4 pt-2">
-                  <div className="p-4 rounded-lg bg-[#090e1c]/70 border border-[#252a39]">
-                    <div className="font-['Geist'] text-[22px] text-[#65e8ff] font-bold">12+</div>
-                    <div className="font-mono text-[11px] text-[#a6b1c5] uppercase mt-1">Enterprise Systems</div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-[#090e1c]/70 border border-[#252a39]">
-                    <div className="font-['Geist'] text-[22px] text-[#65e8ff] font-bold">3,500+</div>
-                    <div className="font-mono text-[11px] text-[#a6b1c5] uppercase mt-1">Engineers Mentored</div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-[#090e1c]/70 border border-[#252a39]">
-                    <div className="font-['Geist'] text-[22px] text-[#65e8ff] font-bold">99.98%</div>
-                    <div className="font-mono text-[11px] text-[#a6b1c5] uppercase mt-1">SLA Architecture</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 8. Final High-Impact CTA Banner */}
-      <section className="w-full bg-[#090e1c] py-24 relative overflow-hidden border-t border-[#434655]/20">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
-          <div className="relative rounded-2xl bg-[#10182b] p-10 lg:p-16 border border-[#434655]/30 shadow-2xl overflow-hidden">
-            <div className="absolute -top-32 -left-32 w-80 h-80 bg-[#658aff]/20 rounded-full blur-[90px] pointer-events-none" />
-            <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-[#65e8ff]/20 rounded-full blur-[90px] pointer-events-none" />
-
-            <div className="max-w-3xl mx-auto text-center flex flex-col items-center space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#252a39]/80 backdrop-blur-md border border-[#65e8ff]/30">
-                <span className="w-2 h-2 rounded-full bg-[#65e8ff] animate-pulse" />
-                <span className="font-mono text-[11px] text-[#65e8ff] uppercase font-semibold">
-                  Ready for Deployment
-                </span>
-              </div>
-
-              <h2 className="font-['Geist'] text-[32px] sm:text-[40px] lg:text-[44px] text-[#dee2f6] font-bold leading-tight">
-                Ready to Learn, Build, and Create Something Amazing?
-              </h2>
-
-              <p className="text-[17px] text-[#a6b1c5] max-w-xl">
-                Join the next cohort of engineers or partner with our enterprise labs to engineer custom software solutions today.
-              </p>
-
-              <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-                <button
-                  onClick={() => navigate('/courses')}
-                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg bg-gradient-to-r from-[#658aff] to-[#2ad9f2] text-[#090e1c] font-bold text-[14px] shadow-[0_0_24px_rgba(41,217,242,0.45)] hover:shadow-[0_0_36px_rgba(41,217,242,0.7)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
-                >
-                  <span>Start Learning</span>
-                  <span className="material-symbols-outlined text-[19px]">rocket_launch</span>
-                </button>
-
-                <button
-                  onClick={() => navigate('/contact')}
-                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg bg-[#252a39] hover:bg-[#2f3444] text-[#dee2f6] font-semibold text-[14px] backdrop-blur-md border border-[#434655]/40 hover:scale-[1.02] transition-all cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[#65e8ff] text-[19px]">forum</span>
-                  <span>Discuss a Project</span>
-                </button>
-              </div>
-            </div>
-          </div>
+      <section className="contact-section" id="contact">
+        <div className="editorial-wrap contact-layout">
+          <div className="contact-intro reveal"><p className="section-index">HAVE A GOOD IDEA?</p><h2>Let’s build<br /><em>something useful.</em></h2><p>Have a project, a question or a learning goal? Tell us where you want to go.</p><a className="contact-email" href={`mailto:${siteSettings.contactEmail || 'naviora.pvt@gmail.com'}`}>{siteSettings.contactEmail || 'naviora.pvt@gmail.com'} <span>↗</span></a><a className="contact-whatsapp" href={`https://wa.me/${siteSettings.whatsappNumber?.replace(/[^0-9]/g, '') || '919890187383'}`} target="_blank" rel="noreferrer">WhatsApp <span>↗</span></a></div>
+          <form className="contact-form reveal" onSubmit={handleInquirySubmit}>
+            <div className="form-grid"><label>Your name<input value={name} onChange={event => { setName(event.target.value); setFormState('idle'); }} required autoComplete="name" /></label><label>Email address<input type="email" value={email} onChange={event => { setEmail(event.target.value); setFormState('idle'); }} required autoComplete="email" /></label></div>
+            <div className="form-grid"><label>Phone <span>(optional)</span><input type="tel" value={phone} onChange={event => { setPhone(event.target.value); setFormState('idle'); }} autoComplete="tel" /></label><label>What are you looking for?<select value={projectType} onChange={event => { setProjectType(event.target.value); setFormState('idle'); }}><option>Business Project</option><option>IT Training</option><option>Software Development</option><option>AI Solutions</option><option>General Inquiry</option></select></label></div>
+            <label>Your message<textarea value={message} onChange={event => { setMessage(event.target.value); setFormState('idle'); }} required rows={4} /></label>
+            {formState === 'success' && <p className="form-feedback form-success" role="status">Thanks. Your message is with our team.</p>}
+            {formState === 'error' && <p className="form-feedback form-error" role="alert">We could not send your message. Please try again.</p>}
+            <button className="button button-dark form-submit" type="submit" disabled={formState === 'sending'}>{formState === 'sending' ? 'Sending…' : 'Send message'} <span aria-hidden="true">↗</span></button>
+          </form>
         </div>
       </section>
     </div>

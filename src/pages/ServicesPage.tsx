@@ -21,6 +21,7 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ navigate }) => {
   const [projectNotes, setProjectNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submissionFeedback, setSubmissionFeedback] = useState<{ token: string; name: string } | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   // Only published services shown on public page
   const publishedServices = services.filter(s => s.status === 'published');
@@ -65,6 +66,7 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ navigate }) => {
     if (!clientName || !clientEmail) return;
 
     setIsSubmitting(true);
+    setSubmissionError(null);
     try {
       const token = await submitInquiry({
         name: clientName,
@@ -81,15 +83,15 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ navigate }) => {
       setClientName('');
       setClientEmail('');
       setProjectNotes('');
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setSubmissionError('We could not submit your request. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
+    <div className="public-services w-full bg-[#080d1b] min-h-screen text-[#dee2f6]">
       {/* Background radial glows */}
       <div className="relative w-full overflow-hidden">
         <div className="absolute -top-40 left-1/4 w-[720px] h-[340px] bg-[#658aff]/10 rounded-full blur-[140px] pointer-events-none" />
@@ -145,19 +147,19 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ navigate }) => {
             <div className="lg:col-span-4 flex flex-col gap-3 bg-[#10182b] p-6 rounded-xl border border-[#434655]/30 shadow-xl relative">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[11px] text-[#a6b1c5] uppercase tracking-wider font-semibold">
-                  Telemetry Pulse
+                  A practical approach
                 </span>
                 <span className="font-mono text-[11px] text-[#65e8ff] font-medium uppercase flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#65e8ff] animate-pulse" />
-                  Live Fleet
+                  Built around your goals
                 </span>
               </div>
 
               {/* Sparkline Visual */}
               <div className="w-full h-24 bg-[#090e1c] rounded-lg p-3 flex flex-col justify-between overflow-hidden relative border border-[#252a39]">
                 <div className="flex items-center justify-between text-[#a6b1c5] font-mono text-[11px]">
-                  <span>TX Throughput</span>
-                  <span className="text-[#65e8ff] font-bold">1.48M req/s</span>
+                  <span>Learning by doing</span>
+                  <span className="text-[#65e8ff] font-bold">Project-led</span>
                 </div>
                 <svg className="w-full h-12 text-[#65e8ff]" preserveAspectRatio="none" viewBox="0 0 320 50">
                   <path
@@ -173,19 +175,19 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ navigate }) => {
                   />
                 </svg>
                 <div className="flex justify-between font-mono text-[10px] text-[#a6b1c5]">
-                  <span>p99 Latency: 4.1ms</span>
-                  <span className="text-[#b5c4ff]">Zero Dropped Packets</span>
+                  <span>Guided practice</span>
+                  <span className="text-[#b5c4ff]">Useful outcomes</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 pt-1 text-[#a6b1c5]">
                 <div className="bg-[#161b2a] p-3 rounded-lg flex flex-col border border-[#252a39]">
-                  <span className="font-mono text-[10px] uppercase">Global Clusters</span>
-                  <span className="font-['Geist'] text-[20px] text-[#dee2f6] font-bold">142</span>
+                  <span className="font-mono text-[10px] uppercase">Learning</span>
+                  <span className="font-['Geist'] text-[20px] text-[#dee2f6] font-bold">Practical</span>
                 </div>
                 <div className="bg-[#161b2a] p-3 rounded-lg flex flex-col border border-[#252a39]">
-                  <span className="font-mono text-[10px] uppercase">Code Velocity</span>
-                  <span className="font-['Geist'] text-[20px] text-[#65e8ff] font-bold">4.8x avg</span>
+                  <span className="font-mono text-[10px] uppercase">Project work</span>
+                  <span className="font-['Geist'] text-[20px] text-[#65e8ff] font-bold">Hands-on</span>
                 </div>
               </div>
             </div>
@@ -196,37 +198,37 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ navigate }) => {
             <div className="flex flex-col gap-1 pr-4 border-r border-[#252a39]/60">
               <div className="flex items-center gap-1.5 text-[#65e8ff] font-mono text-[11px] uppercase">
                 <span className="material-symbols-outlined text-[16px]">verified</span>
-                <span>Availability Standard</span>
+                <span>Practical delivery</span>
               </div>
-              <span className="font-['Geist'] text-[32px] font-bold text-[#dee2f6]">99.98%</span>
-              <span className="text-[13px] text-[#a6b1c5]">Continuous SLA reliability tier across clusters</span>
+              <span className="font-['Geist'] text-[28px] font-bold text-[#dee2f6]">Thoughtful</span>
+              <span className="text-[13px] text-[#a6b1c5]">Work shaped around real needs</span>
             </div>
 
             <div className="flex flex-col gap-1 pr-4 border-r border-[#252a39]/60">
               <div className="flex items-center gap-1.5 text-[#65e8ff] font-mono text-[11px] uppercase">
                 <span className="material-symbols-outlined text-[16px]">public</span>
-                <span>Edge Infrastructure</span>
+                <span>Learning paths</span>
               </div>
-              <span className="font-['Geist'] text-[32px] font-bold text-[#dee2f6]">40+</span>
-              <span className="text-[13px] text-[#a6b1c5]">Global distributed edge datacenters active</span>
+              <span className="font-['Geist'] text-[28px] font-bold text-[#dee2f6]">Hands-on</span>
+              <span className="text-[13px] text-[#a6b1c5]">Learn by making things</span>
             </div>
 
             <div className="flex flex-col gap-1 pr-4 border-r border-[#252a39]/60">
               <div className="flex items-center gap-1.5 text-[#b5c4ff] font-mono text-[11px] uppercase">
                 <span className="material-symbols-outlined text-[16px]">format_image_left</span>
-                <span>Engineering Tenet</span>
+                <span>Useful by design</span>
               </div>
-              <span className="font-['Geist'] text-[32px] font-bold text-[#dee2f6]">Zero</span>
-              <span className="text-[13px] text-[#a6b1c5]">Unbudgeted technical debt architecture</span>
+              <span className="font-['Geist'] text-[28px] font-bold text-[#dee2f6]">Clear</span>
+              <span className="text-[13px] text-[#a6b1c5]">Simple steps, useful outcomes</span>
             </div>
 
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-1.5 text-[#65e8ff] font-mono text-[11px] uppercase">
                 <span className="material-symbols-outlined text-[16px]">support_agent</span>
-                <span>Dedicated Operations</span>
+                <span>Work together</span>
               </div>
-              <span className="font-['Geist'] text-[32px] font-bold text-[#dee2f6]">24/7/365</span>
-              <span className="text-[13px] text-[#a6b1c5]">Direct L3 engineer on-call bridge access</span>
+              <span className="font-['Geist'] text-[28px] font-bold text-[#dee2f6]">Human</span>
+              <span className="text-[13px] text-[#a6b1c5]">Support from people who listen</span>
             </div>
           </div>
         </section>
@@ -269,15 +271,15 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ navigate }) => {
 
         {/* Services Deep-Dive Catalog (2-Column Desktop Grid) */}
         <section className="max-w-7xl mx-auto px-6 lg:px-12 pb-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="service-editorial-list">
             {filteredServices.map((service) => {
               const isDrawerOpen = openDrawerId === service.id;
 
               return (
                 <div
-                  key={service.id}
-                  className="flex flex-col bg-[#10182b] rounded-xl p-8 border border-[#434655]/20 hover:border-[#65e8ff]/30 shadow-md hover:shadow-xl transition-all relative overflow-hidden group"
-                >
+                    key={service.id}
+                    className="service-editorial-entry flex flex-col bg-[#10182b] rounded-xl p-8 border border-[#434655]/20 hover:border-[#65e8ff]/30 shadow-md hover:shadow-xl transition-all relative overflow-hidden group"
+                  >
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="w-12 h-12 rounded-lg bg-[#252a39] border border-[#434655]/30 flex items-center justify-center text-[#65e8ff]">
                       <span className="material-symbols-outlined text-[28px]">dns</span>
@@ -583,8 +585,15 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ navigate }) => {
                     <span>Transmission Successful — Token #{submissionFeedback.token}</span>
                   </div>
                   <p className="mt-1 text-[#a6b1c5] text-[13px] leading-relaxed">
-                    Thank you, <strong className="text-[#dee2f6]">{submissionFeedback.name}</strong>. Your project scope has been queued into Navioraa Firestore Datastore. A Principal Solutions Architect will follow up via email within 4 hours.
+                    Thank you, <strong className="text-[#dee2f6]">{submissionFeedback.name}</strong>. Your project request has been received. Our team will review it and contact you using the details provided.
                   </p>
+                </div>
+              )}
+
+              {/* Submission Error Alert */}
+              {submissionError && (
+                <div role="alert" className="p-3 rounded-lg bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] text-[13px]">
+                  {submissionError}
                 </div>
               )}
 
@@ -592,7 +601,7 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ navigate }) => {
               <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2 text-[#a6b1c5] font-mono text-[11px]">
                   <span className="w-2 h-2 rounded-full bg-[#65e8ff]" />
-                  <span>Encrypted Direct Terminal Transport · Firestore Sync</span>
+                  <span>Project inquiry</span>
                 </div>
 
                 <button
@@ -603,7 +612,7 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ navigate }) => {
                   <span className="material-symbols-outlined text-[18px]">
                     {isSubmitting ? 'sync' : 'send'}
                   </span>
-                  <span>{isSubmitting ? 'Transmitting Specification...' : 'Dispatch Architecture Brief'}</span>
+                  <span>{isSubmitting ? 'Submitting...' : 'Submit Project Inquiry'}</span>
                 </button>
               </div>
             </form>
