@@ -229,7 +229,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               role: 'Founder',
               bio: 'Founder of Navioraa, focused on practical technology training and digital project work.',
               skills: [],
-              photoUrl: '',
+              photoUrl: 'https://drive.google.com/file/d/1iBasxtTJC6gONr3qLuKmhpz9lw-9LpQi/view?usp=sharing',
               linkedinUrl: 'https://www.linkedin.com/in/shubham-mahadik-927770276/'
             }
           },
@@ -241,7 +241,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               role: 'Co-founder',
               bio: 'Co-founder at Navioraa, supporting practical learning and digital project work.',
               skills: [],
-              photoUrl: '',
+              photoUrl: 'https://drive.google.com/file/d/1q5gf_nydN29Nk5pckzVqVSBYCrFGhykZ/view?usp=sharing',
               linkedinUrl: '',
               githubUrl: ''
             }

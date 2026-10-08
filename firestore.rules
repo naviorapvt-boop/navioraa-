@@ -10,13 +10,32 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isOwner() {
+      return isSignedIn() &&
+        request.auth.token.email == 'naviora.pvt@gmail.com' &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+
+    function isProvisionedTeamAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.firebase.sign_in_provider == 'password' &&
+        (
+          (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true &&
+           get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'team_admin') ||
+          (exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) &&
+           get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.active == true &&
+           get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'team_admin')
+        );
+    }
+
     function isAdmin() {
       return isSignedIn() &&
         (
-          (request.auth.token.email == 'naviora.pvt@gmail.com' &&
-           request.auth.token.email_verified == true &&
-           request.auth.token.firebase.sign_in_provider == 'google.com') ||
-          request.auth.token.admin == true
+          isOwner() ||
+          isProvisionedTeamAdmin()
         );
     }
 
@@ -84,7 +103,21 @@ service cloud.firestore {
     match /admins/{adminId} {
       allow read: if isAdmin() ||
                     (isSignedIn() && (request.auth.uid == adminId || request.auth.token.email == adminId));
-      allow write: if false;
+      allow create, update: if isOwner() &&
+        (adminId == request.resource.data.uid || adminId == request.resource.data.email) &&
+        request.resource.data.email is string &&
+        request.resource.data.email.size() > 0 &&
+        request.resource.data.email.size() <= 150 &&
+        request.resource.data.role == 'team_admin' &&
+        request.resource.data.authType == 'password' &&
+        request.resource.data.active == true &&
+        request.resource.data.uid is string &&
+        request.resource.data.createdBy == 'naviora.pvt@gmail.com' &&
+        request.resource.data.keys().hasOnly([
+          'uid', 'email', 'displayName', 'role', 'authType', 'active',
+          'emailVerified', 'createdAt', 'createdBy'
+        ]);
+      allow delete: if isOwner();
     }
   }
 }

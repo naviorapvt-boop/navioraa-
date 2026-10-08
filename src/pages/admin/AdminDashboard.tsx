@@ -52,10 +52,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
     if (!loading && !isAdmin) navigate('/login');
   }, [loading, isAdmin, navigate]);
 
-  if (loading || !isAdmin) {
-    return <div className="min-h-screen bg-[#0e1321]" aria-live="polite" />;
-  }
-
   // Active tab selection
   const initialTab =
     subPath === 'homepage'
@@ -202,6 +198,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
     }, () => setAccessFeedback('Could not load administrator access details.'));
   }, [isAdmin]);
 
+  if (loading || !isAdmin) {
+    return <div className="min-h-screen bg-[#0e1321]" aria-live="polite" />;
+  }
+
   const handleCreateTeamAdmin = async (event: React.FormEvent) => {
     event.preventDefault();
     setAccessBusy(true);
@@ -211,13 +211,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
       setNewAdminEmail('');
       setNewAdminName('');
       setNewAdminPassword('');
-      setAccessFeedback('Team admin account created. Share the email and password with that team member securely.');
+      setAccessFeedback('Team account created. Firebase has sent an email verification link. The member can access the admin panel after verifying their email.');
     } catch (error) {
       const code = typeof error === 'object' && error !== null && 'code' in error
         ? String(error.code)
         : '';
       setAccessFeedback(code.endsWith('/already-exists')
         ? 'An account with that email already exists.'
+        : code.endsWith('/email-already-in-use')
+          ? 'An account with that email already exists.'
         : code.endsWith('/permission-denied')
           ? 'Only the primary Google admin can create team accounts.'
           : 'Could not create the account. Check the email and use a password of at least 10 characters.');

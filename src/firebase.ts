@@ -1,7 +1,15 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getApps, initializeApp } from 'firebase/app';
+import {
+  createUserWithEmailAndPassword,
+  deleteUser,
+  getAuth,
+  GoogleAuthProvider,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signOut,
+  updateProfile
+} from 'firebase/auth';
+import { deleteDoc, doc, getDocFromServer, setDoc, getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -13,20 +21,64 @@ export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
-const functions = getFunctions(app, 'us-east1');
-
-const createTeamAdminCall = httpsCallable<
-  { email: string; password: string; displayName: string },
-  { email: string; displayName: string }
->(functions, 'createTeamAdmin');
-const sendPasswordResetCall = httpsCallable<{ email: string }, { sent: boolean }>(functions, 'sendPasswordReset');
 
 export async function createTeamAdmin(email: string, password: string, displayName: string) {
-  return createTeamAdminCall({ email, password, displayName });
+  const owner = auth.currentUser;
+  const ownerEmail = owner?.email?.trim().toLowerCase();
+  if (!owner || ownerEmail !== 'naviora.pvt@gmail.com' || !owner.emailVerified) {
+    throw new Error('Only the verified primary Google admin can create team accounts.');
+  }
+
+  const ownerToken = await owner.getIdTokenResult(true);
+  if (ownerToken.signInProvider !== 'google.com') {
+    throw new Error('Sign in with the primary Google account before creating team accounts.');
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const teamApp = getApps().find(existingApp => existingApp.name === 'navioraa-team-provisioning')
+    || initializeApp(firebaseConfig, 'navioraa-team-provisioning');
+  const teamAuth = getAuth(teamApp);
+  let newUser;
+
+  try {
+    const credential = await createUserWithEmailAndPassword(teamAuth, normalizedEmail, password);
+    newUser = credential.user;
+    await updateProfile(newUser, { displayName: displayName.trim() });
+    await sendEmailVerification(newUser);
+
+    const adminRecord = {
+      uid: newUser.uid,
+      email: normalizedEmail,
+      displayName: displayName.trim(),
+      role: 'team_admin',
+      authType: 'password',
+      active: true,
+      emailVerified: false,
+      createdAt: new Date().toISOString(),
+      createdBy: ownerEmail
+    };
+    await Promise.all([
+      setDoc(doc(db, 'admins', newUser.uid), adminRecord),
+      setDoc(doc(db, 'admins', normalizedEmail), adminRecord)
+    ]);
+    await signOut(teamAuth);
+    return { email: normalizedEmail };
+  } catch (error) {
+    if (newUser) {
+      await Promise.allSettled([
+        deleteDoc(doc(db, 'admins', newUser.uid)),
+        deleteDoc(doc(db, 'admins', normalizedEmail))
+      ]);
+      if (teamAuth.currentUser?.uid === newUser.uid) {
+        await deleteUser(newUser).catch(() => undefined);
+      }
+    }
+    throw error;
+  }
 }
 
 export async function sendPasswordReset(email: string) {
-  return sendPasswordResetCall({ email });
+  await sendPasswordResetEmail(auth, email.trim().toLowerCase());
 }
 
 export enum OperationType {

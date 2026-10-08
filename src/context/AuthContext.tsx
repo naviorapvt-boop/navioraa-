@@ -7,7 +7,8 @@ import {
   signOut,
   getIdTokenResult,
 } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db, googleProvider } from '../firebase';
 
 const OWNER_EMAIL = 'naviora.pvt@gmail.com';
 
@@ -48,7 +49,17 @@ async function hasAdminAccess(user: User): Promise<boolean> {
   const isPrimaryGoogle = email === OWNER_EMAIL &&
     user.emailVerified &&
     token.signInProvider === 'google.com';
-  return isPrimaryGoogle || token.claims.admin === true;
+  if (isPrimaryGoogle) return true;
+  if (!email || !user.emailVerified || token.signInProvider !== 'password') return false;
+
+  const [uidRecord, emailRecord] = await Promise.all([
+    getDoc(doc(db, 'admins', user.uid)),
+    getDoc(doc(db, 'admins', email))
+  ]);
+  const provisionedRecord = uidRecord.exists() ? uidRecord : emailRecord;
+  return provisionedRecord.exists() &&
+    provisionedRecord.data().active === true &&
+    provisionedRecord.data().role === 'team_admin';
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

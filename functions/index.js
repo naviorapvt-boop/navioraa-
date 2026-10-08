@@ -40,19 +40,26 @@ function mailTransport() {
 async function requireAdmin(request) {
   const identity = request.auth;
   const email = identity?.token.email;
-  if (!identity || !email) {
+  if (!identity || !email || identity.token.email_verified !== true) {
     throw new HttpsError('unauthenticated', 'Sign in with an authorized Google account.');
   }
 
   const normalizedEmail = email.toLowerCase();
-  const isOwner = normalizedEmail === ownerEmail &&
-    identity.token.email_verified === true &&
-    identity.token.firebase?.sign_in_provider === 'google.com';
-  if (isOwner || identity.token.admin === true) {
-    return { uid: identity.uid, email: normalizedEmail, isOwner };
-  }
+  const isOwner = normalizedEmail === ownerEmail && identity.token.firebase?.sign_in_provider === 'google.com';
+  if (isOwner || identity.token.admin === true) return { uid: identity.uid, email: normalizedEmail, isOwner };
 
-  throw new HttpsError('permission-denied', 'Administrator access is required.');
+  if (identity.token.firebase?.sign_in_provider !== 'password') {
+    throw new HttpsError('permission-denied', 'Administrator access is required.');
+  }
+  const [uidRecord, emailRecord] = await Promise.all([
+    db.collection('admins').doc(identity.uid).get(),
+    db.collection('admins').doc(normalizedEmail).get()
+  ]);
+  const teamRecord = uidRecord.exists ? uidRecord : emailRecord;
+  if (!teamRecord.exists || teamRecord.data()?.active !== true || teamRecord.data()?.role !== 'team_admin') {
+    throw new HttpsError('permission-denied', 'Administrator access is required.');
+  }
+  return { uid: identity.uid, email: normalizedEmail, isOwner: false };
 }
 
 async function requireOwner(request) {
