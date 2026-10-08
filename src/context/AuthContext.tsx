@@ -4,6 +4,7 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signInWithEmailAndPassword,
+  sendEmailVerification,
   signOut,
   getIdTokenResult,
 } from 'firebase/auth';
@@ -57,9 +58,12 @@ async function hasAdminAccess(user: User): Promise<boolean> {
     getDoc(doc(db, 'admins', email))
   ]);
   const provisionedRecord = uidRecord.exists() ? uidRecord : emailRecord;
-  return provisionedRecord.exists() &&
-    provisionedRecord.data().active === true &&
-    provisionedRecord.data().role === 'team_admin';
+  if (!provisionedRecord.exists()) return false;
+  const adminRecord = provisionedRecord.data();
+  return adminRecord.uid === user.uid &&
+    adminRecord.email?.toLowerCase() === email &&
+    adminRecord.active === true &&
+    adminRecord.role === 'team_admin';
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -109,9 +113,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthError(null);
     try {
       const credential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      if (!credential.user.emailVerified) {
+        await sendEmailVerification(credential.user);
+        await signOut(auth);
+        throw new Error('This email is not verified yet. We sent a verification link; verify the address, then sign in again.');
+      }
       if (!(await hasAdminAccess(credential.user))) {
         await signOut(auth);
-        throw new Error('This account is not enabled for the admin portal. Ask the primary admin to create your team access.');
+        throw new Error('This account is verified but has not been granted admin access. Ask the owner to grant access to this Firebase user.');
       }
       setUser(credential.user);
       setIsAdmin(true);

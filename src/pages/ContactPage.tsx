@@ -14,7 +14,6 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
   const [inquiryType, setInquiryType] = useState('IT Training');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [budget, setBudget] = useState('Tier 2 ($15k - $30k)');
   const [timeline, setTimeline] = useState('Standard (6-8 Weeks)');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToken, setSuccessToken] = useState<string | null>(null);
@@ -54,7 +53,6 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
         inquiryType,
         subject: subject.trim() || `Inquiry: ${inquiryType}`,
         message: message.trim(),
-        budget,
         timeline,
         services: [inquiryType]
       });
@@ -243,20 +241,6 @@ export const ContactPage: React.FC<ContactPageProps> = ({ navigate }) => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="font-mono text-[11px] text-[#dee2f6] uppercase">Target Budget</label>
-                      <select
-                        value={budget}
-                        onChange={e => setBudget(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-lg bg-[#090e1c] border border-[#252a39] text-[#dee2f6] text-[14px] focus:outline-none focus:border-[#65e8ff]"
-                      >
-                        <option value="Tier 1 ($5k - $15k)">Tier 1: POC / Advisory ($5k - $15k)</option>
-                        <option value="Tier 2 ($15k - $30k)">Tier 2: Production Module ($15k - $30k)</option>
-                        <option value="Tier 3 ($30k - $60k)">Tier 3: Enterprise Platform ($30k - $60k)</option>
-                        <option value="Tier 4 ($60k+)">Tier 4: Hyperscale Suite ($60k+)</option>
-                      </select>
-                    </div>
-
                     <div className="flex flex-col gap-1.5">
                       <label className="font-mono text-[11px] text-[#dee2f6] uppercase">Deployment Horizon</label>
                       <select

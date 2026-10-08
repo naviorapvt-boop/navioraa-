@@ -80,6 +80,40 @@ export async function createTeamAdmin(email: string, password: string, displayNa
   }
 }
 
+export async function grantExistingTeamAdmin(email: string, uid: string, displayName: string) {
+  const owner = auth.currentUser;
+  const ownerEmail = owner?.email?.trim().toLowerCase();
+  if (!owner || ownerEmail !== 'naviora.pvt@gmail.com' || !owner.emailVerified) {
+    throw new Error('Only the verified primary Google admin can grant team access.');
+  }
+  const token = await owner.getIdTokenResult(true);
+  if (token.signInProvider !== 'google.com') {
+    throw new Error('Sign in with the primary Google account to grant team access.');
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedUid = uid.trim();
+  if (!normalizedUid || normalizedEmail === ownerEmail) {
+    throw new Error('Enter the existing team member UID and email, not the owner account.');
+  }
+
+  const record = {
+    uid: normalizedUid,
+    email: normalizedEmail,
+    displayName: displayName.trim(),
+    role: 'team_admin',
+    authType: 'password',
+    active: true,
+    emailVerified: true,
+    createdAt: new Date().toISOString(),
+    createdBy: ownerEmail
+  };
+  await Promise.all([
+    setDoc(doc(db, 'admins', normalizedUid), record),
+    setDoc(doc(db, 'admins', normalizedEmail), record)
+  ]);
+}
+
 export async function revokeTeamAdminAccess(email: string, uid?: string) {
   const owner = auth.currentUser;
   if (!owner || owner.email?.trim().toLowerCase() !== 'naviora.pvt@gmail.com' || !owner.emailVerified) {

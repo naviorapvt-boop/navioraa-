@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import { createTeamAdmin, db, revokeTeamAdminAccess, sendPasswordReset } from '../../firebase';
+import { createTeamAdmin, db, grantExistingTeamAdmin, revokeTeamAdminAccess, sendPasswordReset } from '../../firebase';
 import { Course, Service, Project, Resource, TeamMember, ContactInquiry } from '../../types';
 
 interface AdminDashboardProps {
@@ -68,7 +68,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
       ? 'team'
       : subPath === 'inquiries'
       ? 'inquiries'
-      : subPath === 'access'
+      : subPath === 'access' && isPrimaryOwner
       ? 'access'
       : subPath === 'settings'
       ? 'settings'
@@ -82,6 +82,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminName, setNewAdminName] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [existingAdminEmail, setExistingAdminEmail] = useState('');
+  const [existingAdminUid, setExistingAdminUid] = useState('');
+  const [existingAdminName, setExistingAdminName] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   const [accessFeedback, setAccessFeedback] = useState('');
   const [accessBusy, setAccessBusy] = useState(false);
@@ -177,7 +180,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
   ).length;
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin || !isPrimaryOwner) return;
     return onSnapshot(collection(db, 'admins'), snapshot => {
       const uniqueAdmins = new Map<string, { id: string; uid?: string; email: string; role?: string }>();
       uniqueAdmins.set('naviora.pvt@gmail.com', {
@@ -198,7 +201,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
       });
       setAdminUsers([...uniqueAdmins.values()].sort((left, right) => left.email.localeCompare(right.email)));
     }, () => setAccessFeedback('Could not load administrator access details.'));
-  }, [isAdmin]);
+  }, [isAdmin, isPrimaryOwner]);
 
   if (loading || !isAdmin) {
     return <div className="min-h-screen bg-[#0e1321]" aria-live="polite" />;
@@ -225,6 +228,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
         : code.endsWith('/permission-denied')
           ? 'Only the primary Google admin can create team accounts.'
           : 'Could not create the account. Check the email and use a password of at least 10 characters.');
+    } finally {
+      setAccessBusy(false);
+    }
+  };
+
+  const handleGrantExistingTeamAdmin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setAccessBusy(true);
+    setAccessFeedback('');
+    try {
+      await grantExistingTeamAdmin(existingAdminEmail, existingAdminUid, existingAdminName);
+      setExistingAdminEmail('');
+      setExistingAdminUid('');
+      setExistingAdminName('');
+      setAccessFeedback('Existing account granted team admin access. The member can now sign in with their existing verified email and password.');
+    } catch (error) {
+      setAccessFeedback(error instanceof Error
+        ? error.message
+        : 'Could not grant access. Confirm the email and UID in Firebase Authentication.');
     } finally {
       setAccessBusy(false);
     }
@@ -528,15 +550,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
             )}
           </button>
 
-          <button
-            onClick={() => setActiveTab('access')}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[14px] font-semibold transition-colors cursor-pointer ${
-              activeTab === 'access' ? 'bg-[#252a39] text-[#65e8ff]' : 'text-[#c3c5d7] hover:bg-[#161b2a] hover:text-[#dee2f6]'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
-            <span>Admin Access</span>
-          </button>
+          {isPrimaryOwner && (
+            <button
+              onClick={() => setActiveTab('access')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-[14px] font-semibold transition-colors cursor-pointer ${
+                activeTab === 'access' ? 'bg-[#252a39] text-[#65e8ff]' : 'text-[#c3c5d7] hover:bg-[#161b2a] hover:text-[#dee2f6]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
+              <span>Admin Access</span>
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab('homepage')}
@@ -819,7 +843,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
               { id: 'resources', label: 'Learning Docs', count: resources.length, icon: 'menu_book' },
               { id: 'team', label: 'Team Faculty', count: teamMembers.length, icon: 'badge' },
               { id: 'inquiries', label: 'Recent Inquiries', count: unresolvedInquiries.length, icon: 'mark_chat_unread', alert: unresolvedInquiries.length > 0 },
-              { id: 'access', label: 'Admin Access', count: adminUsers.length, icon: 'manage_accounts' },
+              ...(isPrimaryOwner ? [{ id: 'access', label: 'Admin Access', count: adminUsers.length, icon: 'manage_accounts' }] : []),
               { id: 'homepage', label: 'Homepage CMS', icon: 'dashboard_customize' },
               { id: 'settings', label: 'Site Settings', icon: 'tune' },
               { id: 'audit', label: 'Security Audit Logs', count: auditLogs.length, icon: 'policy' }
@@ -1436,7 +1460,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                 </div>
               )}
 
-              {activeTab === 'access' && (
+              {activeTab === 'access' && isPrimaryOwner && (
                 <div className="bg-[#161b2a]/90 rounded-xl p-5 sm:p-6 border border-[#252a39] shadow-xl flex flex-col gap-7">
                   <div>
                     <h2 className="font-['Geist'] text-[22px] font-bold text-[#dee2f6]">Team admin access</h2>
@@ -1498,6 +1522,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                   </form> : (
                     <p className="text-[13px] text-[#a6b1c5]">Only the primary owner can create team login accounts.</p>
                   )}
+
+                  <div className="border-t border-[#252a39] pt-5">
+                    <h3 className="text-[15px] font-semibold text-[#dee2f6]">Grant an existing Firebase account</h3>
+                    <p className="text-[12px] text-[#a6b1c5] mt-1 mb-4">Use this if the team member already exists under Firebase Authentication → Users. Copy the exact UID from that user’s details. Their email must be verified before they can access the admin panel.</p>
+                    <form onSubmit={handleGrantExistingTeamAdmin} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <label className="text-[12px] text-[#a6b1c5]">
+                        Account email
+                        <input
+                          type="email"
+                          required
+                          value={existingAdminEmail}
+                          onChange={event => setExistingAdminEmail(event.target.value)}
+                          placeholder="sashi@gmail.com"
+                          className="mt-1 w-full min-w-0 px-3 py-2.5 rounded-lg bg-[#090e1c] border border-[#434655] text-[#dee2f6] text-[13px] focus:outline-none focus:border-[#65e8ff]"
+                        />
+                      </label>
+                      <label className="text-[12px] text-[#a6b1c5]">
+                        Firebase Auth UID
+                        <input
+                          type="text"
+                          required
+                          value={existingAdminUid}
+                          onChange={event => setExistingAdminUid(event.target.value)}
+                          placeholder="Copy from Authentication users"
+                          className="mt-1 w-full min-w-0 px-3 py-2.5 rounded-lg bg-[#090e1c] border border-[#434655] text-[#dee2f6] text-[13px] focus:outline-none focus:border-[#65e8ff]"
+                        />
+                      </label>
+                      <label className="text-[12px] text-[#a6b1c5]">
+                        Display name
+                        <input
+                          type="text"
+                          maxLength={100}
+                          value={existingAdminName}
+                          onChange={event => setExistingAdminName(event.target.value)}
+                          placeholder="Team member"
+                          className="mt-1 w-full min-w-0 px-3 py-2.5 rounded-lg bg-[#090e1c] border border-[#434655] text-[#dee2f6] text-[13px] focus:outline-none focus:border-[#65e8ff]"
+                        />
+                      </label>
+                      <button
+                        type="submit"
+                        disabled={accessBusy}
+                        className="sm:col-span-3 justify-self-start px-4 py-2.5 rounded-lg border border-[#434655] text-[#dee2f6] text-[12px] font-semibold hover:bg-[#252a39] disabled:opacity-50"
+                      >
+                        {accessBusy ? 'Granting access…' : 'Grant team admin access'}
+                      </button>
+                    </form>
+                  </div>
 
                   <div>
                     <h3 className="text-[15px] font-semibold text-[#dee2f6] mb-3">Current administrators</h3>

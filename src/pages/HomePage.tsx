@@ -1,5 +1,6 @@
 import React, { type FormEvent, useEffect, useState } from 'react';
 import { useData } from '../context/DataContext';
+import { getDisplayImageUrl } from '../utils/imageUrl';
 
 interface HomePageProps {
   navigate: (path: string) => void;
@@ -194,7 +195,7 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate }) => {
           <div className="team-heading reveal"><div><p className="section-index">PEOPLE MAKE THE WORK</p><h2>Meet the people<br /><em>behind Navioraa.</em></h2></div><button className="underlined-link" onClick={() => navigate('/team')}>The wider team <span>↗</span></button></div>
           <div className="team-list">
             {publishedTeam.map((member, index) => (
-              <article className="team-profile reveal" key={member.id}><div className="team-photo">{member.photoUrl ? <img src={member.photoUrl} alt={member.name} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} /> : <span className="team-initials" aria-label={`${member.name} portrait not added`}>{member.name.split(' ').map(part => part[0]).join('').slice(0, 2)}</span>}<span>0{index + 1}</span></div><div className="team-info"><p className="section-index">{member.role}</p><h3>{member.name}</h3><p>{member.bio}</p></div></article>
+              <article className="team-profile reveal" key={member.id}><div className="team-photo">{member.photoUrl ? <img src={getDisplayImageUrl(member.photoUrl)} alt={member.name} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} /> : <span className="team-initials" aria-label={`${member.name} portrait not added`}>{member.name.split(' ').map(part => part[0]).join('').slice(0, 2)}</span>}<span>0{index + 1}</span></div><div className="team-info"><p className="section-index">{member.role}</p><h3>{member.name}</h3><p>{member.bio}</p></div></article>
             ))}
             {!publishedTeam.length && <p className="empty-note">Our team profiles will be here soon.</p>}
           </div>

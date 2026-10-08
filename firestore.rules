@@ -23,9 +23,13 @@ service cloud.firestore {
         request.auth.token.firebase.sign_in_provider == 'password' &&
         (
           (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.uid == request.auth.uid &&
+           get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.email == request.auth.token.email &&
            get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true &&
            get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'team_admin') ||
           (exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) &&
+           get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.uid == request.auth.uid &&
+           get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.email == request.auth.token.email &&
            get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.active == true &&
            get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'team_admin')
         );

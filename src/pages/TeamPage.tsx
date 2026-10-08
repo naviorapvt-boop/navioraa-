@@ -1,5 +1,6 @@
 import React from 'react';
 import { useData } from '../context/DataContext';
+import { getDisplayImageUrl } from '../utils/imageUrl';
 
 interface TeamPageProps {
   navigate: (path: string) => void;
@@ -38,7 +39,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ navigate }) => {
               <div className="team-editorial-image">
                 {member.photoUrl ? (
                   <img
-                    src={member.photoUrl}
+                    src={getDisplayImageUrl(member.photoUrl)}
                     alt={member.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                     loading="lazy"
