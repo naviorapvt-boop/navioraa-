@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import { createTeamAdmin, db, sendPasswordReset } from '../../firebase';
+import { createTeamAdmin, db, revokeTeamAdminAccess, sendPasswordReset } from '../../firebase';
 import { Course, Service, Project, Resource, TeamMember, ContactInquiry } from '../../types';
 
 interface AdminDashboardProps {
@@ -78,7 +78,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
   const [courseFilter, setCourseFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [adminUsers, setAdminUsers] = useState<{ id: string; email: string; role?: string }[]>([]);
+  const [adminUsers, setAdminUsers] = useState<{ id: string; uid?: string; email: string; role?: string }[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminName, setNewAdminName] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
@@ -132,6 +132,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
   // Team Modal state
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [teamFormName, setTeamFormName] = useState('');
+  const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
   const [teamFormRole, setTeamFormRole] = useState('');
   const [teamFormBio, setTeamFormBio] = useState('');
   const [teamFormSkills, setTeamFormSkills] = useState('');
@@ -178,7 +179,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
   useEffect(() => {
     if (!isAdmin) return;
     return onSnapshot(collection(db, 'admins'), snapshot => {
-      const uniqueAdmins = new Map<string, { id: string; email: string; role?: string }>();
+      const uniqueAdmins = new Map<string, { id: string; uid?: string; email: string; role?: string }>();
       uniqueAdmins.set('naviora.pvt@gmail.com', {
         id: 'owner',
         email: 'naviora.pvt@gmail.com',
@@ -189,6 +190,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
         if (typeof data.email === 'string' && data.email.includes('@')) {
           uniqueAdmins.set(data.email.toLowerCase(), {
             id: adminDoc.id,
+            uid: typeof data.uid === 'string' ? data.uid : adminDoc.id,
             email: data.email,
             role: typeof data.role === 'string' ? data.role : 'admin'
           });
@@ -246,6 +248,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
     } finally {
       setAccessBusy(false);
     }
+  };
+
+  const handleRevokeTeamAdmin = async (admin: { email: string; uid?: string }) => {
+    if (!confirm(`Revoke admin portal access for ${admin.email}? They will no longer be able to access inquiries or admin tools.`)) return;
+    setAccessBusy(true);
+    setAccessFeedback('');
+    try {
+      await revokeTeamAdminAccess(admin.email, admin.uid);
+      setAccessFeedback(`Portal access revoked for ${admin.email}. The Firebase Authentication account itself remains and can be deleted separately in Firebase Console.`);
+    } catch {
+      setAccessFeedback('Could not revoke access. Confirm that you are signed in as the primary owner.');
+    } finally {
+      setAccessBusy(false);
+    }
+  };
+
+  const handleExportInquiries = () => {
+    const columns: (keyof ContactInquiry)[] = [
+      'id', 'createdAt', 'name', 'email', 'phone', 'inquiryType', 'subject',
+      'message', 'budget', 'timeline', 'services', 'status', 'adminNotes'
+    ];
+    const escapeCsv = (value: unknown) => {
+      const text = Array.isArray(value) ? value.join('; ') : value == null ? '' : String(value);
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const csv = [
+      columns.join(','),
+      ...inquiries.map(inquiry => columns.map(column => escapeCsv(inquiry[column])).join(','))
+    ].join('\r\n');
+    const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `navioraa-inquiries-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   // Filtered courses
@@ -1244,6 +1284,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                     </div>
                     <button
                       onClick={() => {
+                        setEditingTeamMember(null);
                         setTeamFormName('');
                         setTeamFormRole('Senior Systems Architect');
                         setTeamFormBio('');
@@ -1269,6 +1310,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingTeamMember(m);
+                              setTeamFormName(m.name);
+                              setTeamFormRole(m.role);
+                              setTeamFormBio(m.bio);
+                              setTeamFormSkills(m.skills?.join(', ') || '');
+                              setTeamFormPhoto(m.photoUrl || '');
+                              setTeamFormLinkedin(m.linkedinUrl || '');
+                              setIsTeamModalOpen(true);
+                            }}
+                            className="p-1 rounded text-[#a6b1c5] hover:text-[#65e8ff]"
+                            aria-label={`Edit ${m.name}`}
+                            title="Edit profile"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                          </button>
                           <button
                             onClick={() => toggleTeamMemberStatus(m.id)}
                             className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold cursor-pointer ${
@@ -1300,6 +1358,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                       <h2 className="font-['Geist'] text-[24px] font-bold text-[#dee2f6]">Client Inquiries Queue</h2>
                       <p className="text-[13px] text-[#a6b1c5]">Review and resolve RFPs, training applications, and consultations.</p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={handleExportInquiries}
+                      disabled={!inquiries.length}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[#434655] text-[#dee2f6] text-[12px] font-semibold hover:bg-[#252a39] disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Export all inquiries as an Excel-compatible CSV"
+                    >
+                      <span className="material-symbols-outlined text-[17px]">download</span>
+                      <span>Export spreadsheet</span>
+                    </button>
                   </div>
 
                   <div className="space-y-4">
@@ -1438,7 +1506,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                         {adminUsers.map(admin => (
                           <li key={admin.email} className="py-3 flex flex-wrap items-center justify-between gap-2">
                             <span className="text-[13px] text-[#dee2f6] break-all">{admin.email}</span>
-                            <span className="text-[11px] uppercase tracking-wide text-[#a6b1c5]">{admin.role || 'Admin'}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-[11px] uppercase tracking-wide text-[#a6b1c5]">{admin.role || 'Admin'}</span>
+                              {admin.role !== 'Owner' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRevokeTeamAdmin(admin)}
+                                  disabled={!isPrimaryOwner || accessBusy}
+                                  className="text-[11px] font-semibold text-[#ffb4ab] hover:text-white disabled:opacity-40"
+                                  title="Revoke admin portal access"
+                                >
+                                  Revoke access
+                                </button>
+                              )}
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -2228,22 +2309,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#090e1c]/80 backdrop-blur-md p-4 animate-in fade-in">
           <div className="bg-[#161b2a] border border-[#65e8ff]/30 rounded-xl p-6 w-full max-w-lg shadow-2xl">
             <h3 className="font-['Geist'] text-[20px] text-[#dee2f6] font-bold mb-4">
-              Add Team Member
+              {editingTeamMember ? 'Edit Team Member' : 'Add Team Member'}
             </h3>
             <form
               onSubmit={async e => {
                 e.preventDefault();
-                await addTeamMember({
+                const profile = {
                   name: teamFormName,
                   role: teamFormRole,
                   bio: teamFormBio,
                   skills: teamFormSkills.split(',').map(s => s.trim()).filter(Boolean),
                   photoUrl: teamFormPhoto,
                   linkedinUrl: teamFormLinkedin,
-                  sortOrder: teamMembers.length + 1,
-                  status: 'published'
-                });
+                  status: editingTeamMember?.status || 'published' as const
+                };
+                if (editingTeamMember) {
+                  await updateTeamMember(editingTeamMember.id, profile);
+                } else {
+                  await addTeamMember({ ...profile, sortOrder: teamMembers.length + 1 });
+                }
                 setIsTeamModalOpen(false);
+                setEditingTeamMember(null);
               }}
               className="space-y-4"
             >
@@ -2286,10 +2372,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                   className="w-full bg-[#090e1c] text-[#dee2f6] px-3 py-2 rounded-lg border border-[#252a39]"
                 />
               </div>
+              <div>
+                <label className="text-[12px] font-mono text-[#dee2f6]">LinkedIn URL</label>
+                <input
+                  type="url"
+                  value={teamFormLinkedin}
+                  onChange={e => setTeamFormLinkedin(e.target.value)}
+                  className="w-full bg-[#090e1c] text-[#dee2f6] px-3 py-2 rounded-lg border border-[#252a39]"
+                />
+              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsTeamModalOpen(false)}
+                  onClick={() => { setIsTeamModalOpen(false); setEditingTeamMember(null); }}
                   className="px-4 py-2 bg-[#252a39] rounded-lg text-sm"
                 >
                   Cancel
@@ -2298,7 +2393,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ navigate, subPat
                   type="submit"
                   className="px-5 py-2 bg-gradient-to-r from-[#658aff] to-[#2ad9f2] text-[#090e1c] font-bold rounded-lg text-sm"
                 >
-                  Save Profile
+                  {editingTeamMember ? 'Update Profile' : 'Save Profile'}
                 </button>
               </div>
             </form>

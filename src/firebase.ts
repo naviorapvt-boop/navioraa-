@@ -13,7 +13,10 @@ import { deleteDoc, doc, getDocFromServer, setDoc, getFirestore } from 'firebase
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
+const app = initializeApp({
+  ...firebaseConfig,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain
+});
 
 // CRITICAL: The app uses the configured firestoreDatabaseId
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
@@ -75,6 +78,23 @@ export async function createTeamAdmin(email: string, password: string, displayNa
     }
     throw error;
   }
+}
+
+export async function revokeTeamAdminAccess(email: string, uid?: string) {
+  const owner = auth.currentUser;
+  if (!owner || owner.email?.trim().toLowerCase() !== 'naviora.pvt@gmail.com' || !owner.emailVerified) {
+    throw new Error('Only the verified primary admin can revoke team access.');
+  }
+  const token = await owner.getIdTokenResult(true);
+  if (token.signInProvider !== 'google.com') {
+    throw new Error('Sign in with the primary Google account to revoke team access.');
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  await Promise.all([
+    deleteDoc(doc(db, 'admins', normalizedEmail)),
+    ...(uid ? [deleteDoc(doc(db, 'admins', uid))] : [])
+  ]);
 }
 
 export async function sendPasswordReset(email: string) {
